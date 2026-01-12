@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser, supabaseAdmin } from '@/lib/auth-server';
 
+export const dynamic = 'force-dynamic';
+
 // PUT - Update business (including delivery_fee)
 export async function PUT(
   request: NextRequest,
