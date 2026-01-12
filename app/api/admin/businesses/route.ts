@@ -84,14 +84,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    if (error) {
-      console.error('Supabase query error:', error);
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      );
-    }
-
     return NextResponse.json(businesses || []);
   } catch (error) {
     console.error('Error fetching businesses:', error);

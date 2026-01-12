@@ -196,7 +196,7 @@ export default function QuickOrderPage() {
             Quick Order Delivery
           </h1>
           <p className="text-gray-600 mb-8">
-            Order a delivery quickly. We'll verify your phone and create your account if needed.
+            Order a delivery quickly. We&apos;ll verify your phone and create your account if needed.
           </p>
 
           <OrderProgress currentStep={getCurrentStep()} />
@@ -206,7 +206,7 @@ export default function QuickOrderPage() {
               {isNewUser && (
                 <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-sm text-blue-800 mb-4">
-                    This phone number is not registered. We'll create your business account after verification.
+                    This phone number is not registered. We&apos;ll create your business account after verification.
                   </p>
                   <div className="space-y-3">
                     <div>

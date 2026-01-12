@@ -181,12 +181,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Extract tokens - TypeScript types don't include these but they may exist at runtime
+    const properties = linkData.properties as any;
+    
     return NextResponse.json({
       success: true,
       userId,
       businessId,
-      accessToken: linkData.properties?.access_token,
-      refreshToken: linkData.properties?.refresh_token,
+      accessToken: properties?.access_token,
+      refreshToken: properties?.refresh_token,
     });
   } catch (error) {
     console.error('Error in quick verify OTP:', error);

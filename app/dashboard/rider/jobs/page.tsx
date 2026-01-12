@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Filter, Loader2 } from 'lucide-react';
+import { Filter, Loader2, Package } from 'lucide-react';
 import { getUserRole } from '@/lib/roles';
 import DeliveryCard from '@/components/rider/DeliveryCard';
 
@@ -32,20 +32,7 @@ export default function RiderJobsPage() {
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
 
-  useEffect(() => {
-    async function checkRole() {
-      const userRole = await getUserRole();
-      if (userRole !== 'RIDER') {
-        router.push('/dashboard/business');
-        return;
-      }
-      setRole(userRole);
-      loadDeliveries();
-    }
-    checkRole();
-  }, [router]);
-
-  async function loadDeliveries() {
+  const loadDeliveries = useCallback(async () => {
     try {
       const url = statusFilter === 'ALL' 
         ? '/api/rider/deliveries?limit=1000'
@@ -61,13 +48,25 @@ export default function RiderJobsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [statusFilter]);
+
+  useEffect(() => {
+    async function checkRole() {
+      const userRole = await getUserRole();
+      if (userRole !== 'RIDER') {
+        router.push('/dashboard/business');
+        return;
+      }
+      setRole(userRole);
+    }
+    checkRole();
+  }, [router]);
 
   useEffect(() => {
     if (role === 'RIDER') {
       loadDeliveries();
     }
-  }, [statusFilter, role]);
+  }, [statusFilter, role, loadDeliveries]);
 
   if (loading) {
     return (

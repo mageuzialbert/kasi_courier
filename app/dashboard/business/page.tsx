@@ -155,7 +155,7 @@ export default function BusinessDashboard() {
           Welcome, {businessName || 'Business'}!
         </h1>
         <p className="text-gray-600 mt-2">
-          Here's an overview of your delivery operations
+          Here&apos;s an overview of your delivery operations
         </p>
       </div>
 

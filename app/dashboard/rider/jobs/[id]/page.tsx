@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { getUserRole } from '@/lib/roles';
@@ -54,20 +54,7 @@ export default function RiderJobDetailsPage() {
   const [events, setEvents] = useState<DeliveryEvent[]>([]);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    async function checkRole() {
-      const userRole = await getUserRole();
-      if (userRole !== 'RIDER') {
-        router.push('/dashboard/business');
-        return;
-      }
-      setRole(userRole);
-      loadDeliveryDetails();
-    }
-    checkRole();
-  }, [router, deliveryId]);
-
-  async function loadDeliveryDetails() {
+  const loadDeliveryDetails = useCallback(async () => {
     try {
       // Load all deliveries and find the one we need
       const deliveryResponse = await fetch(`/api/rider/deliveries?limit=1000`);
@@ -95,7 +82,20 @@ export default function RiderJobDetailsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [deliveryId]);
+
+  useEffect(() => {
+    async function checkRole() {
+      const userRole = await getUserRole();
+      if (userRole !== 'RIDER') {
+        router.push('/dashboard/business');
+        return;
+      }
+      setRole(userRole);
+      loadDeliveryDetails();
+    }
+    checkRole();
+  }, [router, deliveryId, loadDeliveryDetails]);
 
   async function handleStatusUpdate(status: string, note: string) {
     setUpdating(true);

@@ -28,7 +28,7 @@ async function getAuthenticatedUser() {
         set(name: string, value: string, options: any) {},
         remove(name: string, options: any) {},
       },
-    }
+    } as any
   );
 
   const { data: { user }, error } = await supabaseClient.auth.getUser();

@@ -21,6 +21,7 @@ interface Delivery {
   status: string;
   assigned_rider_id: string | null;
   created_at: string;
+  delivered_at: string | null;
   businesses?: {
     id: string;
     name: string;

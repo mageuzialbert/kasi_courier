@@ -36,7 +36,7 @@ export async function PUT(
     // Verify rider exists and is a RIDER
     const { data: rider, error: riderError } = await supabaseAdmin
       .from('users')
-      .select('id, role, active')
+      .select('id, name, role, active')
       .eq('id', rider_id)
       .single();
 

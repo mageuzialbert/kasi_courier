@@ -9,15 +9,27 @@ import DeliveriesTable from '@/components/deliveries/DeliveriesTable';
 
 interface Delivery {
   id: string;
+  business_id: string;
+  pickup_address: string;
+  pickup_name: string;
+  pickup_phone: string;
+  dropoff_address: string;
+  dropoff_name: string;
+  dropoff_phone: string;
+  package_description: string | null;
   status: string;
+  assigned_rider_id: string | null;
   created_at: string;
+  delivered_at: string | null;
   businesses?: {
     id: string;
     name: string;
+    phone: string;
   };
   assigned_rider?: {
     id: string;
     name: string;
+    phone: string;
   } | null;
 }
 

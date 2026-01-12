@@ -161,9 +161,10 @@ export async function POST(request: NextRequest) {
     // Log full response for debugging
     console.log('Full linkData response:', JSON.stringify(linkData, null, 2));
 
-    // Extract tokens - they should be in properties.access_token and properties.refresh_token
-    let accessToken = linkData.properties?.access_token;
-    let refreshToken = linkData.properties?.refresh_token;
+    // Extract tokens - TypeScript types don't include these but they may exist at runtime
+    const properties = linkData.properties as any;
+    let accessToken = properties?.access_token;
+    let refreshToken = properties?.refresh_token;
 
     // If tokens are not in properties, they might be in the action_link URL hash
     if ((!accessToken || !refreshToken) && linkData.properties?.action_link) {
