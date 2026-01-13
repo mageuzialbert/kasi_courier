@@ -26,6 +26,7 @@ interface Expense {
 interface ExpenseCategory {
   id: string;
   name: string;
+  active?: boolean;
 }
 
 interface ExpenseFormData {

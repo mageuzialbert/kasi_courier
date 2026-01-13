@@ -340,29 +340,29 @@ export default function BusinessProfilePage() {
     }
   }
 
-  function removeLogo() {
+  async function removeLogo() {
     if (!businessId) return;
     
     setError('');
     setSuccess('');
     setSaving(true);
 
-    supabase
-      .from('businesses')
-      .update({ logo_url: null })
-      .eq('id', businessId)
-      .then(({ error }) => {
-        if (error) throw error;
-        setProfile({ ...profile, logo_url: null });
-        setSuccess('Logo removed successfully!');
-        setTimeout(() => setSuccess(''), 3000);
-      })
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : 'Failed to remove logo');
-      })
-      .finally(() => {
-        setSaving(false);
-      });
+    try {
+      const { error } = await supabase
+        .from('businesses')
+        .update({ logo_url: null })
+        .eq('id', businessId);
+      
+      if (error) throw error;
+      
+      setProfile({ ...profile, logo_url: null });
+      setSuccess('Logo removed successfully!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to remove logo');
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (loading) {

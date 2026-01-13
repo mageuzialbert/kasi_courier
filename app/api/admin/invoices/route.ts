@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
     }, 0);
 
     // Generate invoice number
-    let invoiceNumber = generateInvoiceNumber(invoiceType);
+    let invoiceNumber = generateInvoiceNumber(invoice_type);
     
     // Ensure uniqueness
     let attempts = 0;
@@ -115,12 +115,12 @@ export async function POST(request: NextRequest) {
 
       if (!existing) break;
       
-      invoiceNumber = generateInvoiceNumber(invoiceType);
+      invoiceNumber = generateInvoiceNumber(invoice_type);
       attempts++;
     }
 
     // Determine status based on invoice type
-    const status = invoiceType === 'PROFORMA' ? 'PROFORMA' : 'DRAFT';
+    const status = invoice_type === 'PROFORMA' ? 'PROFORMA' : 'DRAFT';
 
     // Create invoice
     const invoiceData = {
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
       invoice_number: invoiceNumber,
       total_amount: totalAmount,
       status,
-      invoice_type: invoiceType,
+      invoice_type: invoice_type,
       due_date: due_date || null,
       notes: notes || null,
       created_by: user.id,
