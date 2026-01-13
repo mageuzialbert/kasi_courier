@@ -6,6 +6,7 @@ export interface RegisterData {
   phone: string;
   password: string;
   districtId?: number;
+  packageId?: string;
 }
 
 export interface LoginData {
@@ -25,6 +26,7 @@ export async function registerBusiness(data: RegisterData) {
       phone: data.phone,
       password: data.password,
       districtId: data.districtId,
+      packageId: data.packageId,
     }),
   });
 

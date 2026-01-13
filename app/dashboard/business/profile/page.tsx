@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Save, Loader2 } from 'lucide-react';
+import { Save, Loader2, Upload, X } from 'lucide-react';
 
 interface BusinessProfile {
   name: string;
@@ -12,6 +12,7 @@ interface BusinessProfile {
   city: string | null;
   postal_code: string | null;
   district_id: number | null;
+  logo_url: string | null;
 }
 
 interface Region {
@@ -34,6 +35,7 @@ export default function BusinessProfilePage() {
     city: '',
     postal_code: '',
     district_id: null,
+    logo_url: null,
   });
   const [regions, setRegions] = useState<Region[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
@@ -41,6 +43,7 @@ export default function BusinessProfilePage() {
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -147,6 +150,7 @@ export default function BusinessProfilePage() {
       const city = business?.city ?? '';
       const postalCode = business?.postal_code ?? '';
       const districtId = business?.district_id ?? null;
+      const logoUrl = business?.logo_url ?? null;
 
       console.log('Loading profile - Business data:', {
         hasBusiness: !!business,
@@ -164,6 +168,7 @@ export default function BusinessProfilePage() {
         city: city,
         postal_code: postalCode,
         district_id: districtId,
+        logo_url: logoUrl,
       });
 
       // Load districts for the region if district_id exists
@@ -197,6 +202,7 @@ export default function BusinessProfilePage() {
             city: '',
             postal_code: '',
             district_id: null,
+            logo_url: null,
           });
         } else {
           setError('Failed to load profile. Please try refreshing the page.');
@@ -300,6 +306,65 @@ export default function BusinessProfilePage() {
     }
   }
 
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setError('');
+    setSuccess('');
+    setUploadingLogo(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/businesses/upload-logo', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to upload logo');
+      }
+
+      const data = await response.json();
+      setProfile({ ...profile, logo_url: data.url });
+      setSuccess('Logo uploaded successfully!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to upload logo');
+    } finally {
+      setUploadingLogo(false);
+      e.target.value = ''; // Reset input
+    }
+  }
+
+  function removeLogo() {
+    if (!businessId) return;
+    
+    setError('');
+    setSuccess('');
+    setSaving(true);
+
+    supabase
+      .from('businesses')
+      .update({ logo_url: null })
+      .eq('id', businessId)
+      .then(({ error }) => {
+        if (error) throw error;
+        setProfile({ ...profile, logo_url: null });
+        setSuccess('Logo removed successfully!');
+        setTimeout(() => setSuccess(''), 3000);
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : 'Failed to remove logo');
+      })
+      .finally(() => {
+        setSaving(false);
+      });
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -330,6 +395,55 @@ export default function BusinessProfilePage() {
       )}
 
       <form onSubmit={handleSave} className="bg-white rounded-lg shadow-md p-6 space-y-6">
+        {/* Business Logo */}
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Business Logo</h2>
+          <div className="flex items-start gap-6">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Logo Image
+              </label>
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-dark transition-colors cursor-pointer disabled:opacity-50">
+                  <Upload className="w-4 h-4" />
+                  <span>{uploadingLogo ? 'Uploading...' : 'Upload Logo'}</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/svg+xml,image/webp"
+                    onChange={handleLogoUpload}
+                    disabled={uploadingLogo || saving}
+                    className="hidden"
+                  />
+                </label>
+                {profile.logo_url && (
+                  <button
+                    type="button"
+                    onClick={removeLogo}
+                    disabled={saving}
+                    className="text-red-600 hover:text-red-800 text-sm disabled:opacity-50"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Recommended: PNG or SVG, max 5MB. Your logo will appear on your business profile.
+              </p>
+            </div>
+            {profile.logo_url && (
+              <div className="flex-shrink-0">
+                <div className="w-32 h-32 border-2 border-gray-200 rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center">
+                  <img
+                    src={profile.logo_url}
+                    alt="Business Logo"
+                    className="max-w-full max-h-full object-contain"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
         <div>
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Business Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

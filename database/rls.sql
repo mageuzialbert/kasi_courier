@@ -10,6 +10,9 @@ ALTER TABLE sms_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE otp_codes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE regions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE districts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE delivery_fee_packages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE expense_categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
 
 -- ============================================
 -- USERS TABLE POLICIES
@@ -356,6 +359,108 @@ CREATE POLICY "Anyone can read districts"
 -- Only admins can modify districts
 CREATE POLICY "Admins can modify districts"
   ON districts FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE id = auth.uid() AND role = 'ADMIN'
+    )
+  );
+
+-- ============================================
+-- DELIVERY FEE PACKAGES TABLE POLICIES
+-- ============================================
+
+-- Public can read active packages (for registration)
+CREATE POLICY "Public can read active packages"
+  ON delivery_fee_packages FOR SELECT
+  USING (active = true);
+
+-- Businesses can read active packages
+CREATE POLICY "Businesses can read active packages"
+  ON delivery_fee_packages FOR SELECT
+  USING (active = true);
+
+-- Admin and Staff can read all packages
+CREATE POLICY "Admin and Staff can read all packages"
+  ON delivery_fee_packages FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE id = auth.uid() AND role IN ('ADMIN', 'STAFF')
+    )
+  );
+
+-- Only Admins can create/update/delete packages
+CREATE POLICY "Admins can manage packages"
+  ON delivery_fee_packages FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE id = auth.uid() AND role = 'ADMIN'
+    )
+  );
+
+-- ============================================
+-- EXPENSE CATEGORIES TABLE POLICIES
+-- ============================================
+
+-- Admin and Staff can read categories
+CREATE POLICY "Admin and Staff can read expense categories"
+  ON expense_categories FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE id = auth.uid() AND role IN ('ADMIN', 'STAFF')
+    )
+  );
+
+-- Only Admins can create/update/delete categories
+CREATE POLICY "Admins can manage expense categories"
+  ON expense_categories FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE id = auth.uid() AND role = 'ADMIN'
+    )
+  );
+
+-- ============================================
+-- EXPENSES TABLE POLICIES
+-- ============================================
+
+-- Admin and Staff can read expenses
+CREATE POLICY "Admin and Staff can read expenses"
+  ON expenses FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE id = auth.uid() AND role IN ('ADMIN', 'STAFF')
+    )
+  );
+
+-- Admin and Staff can create expenses
+CREATE POLICY "Admin and Staff can create expenses"
+  ON expenses FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE id = auth.uid() AND role IN ('ADMIN', 'STAFF')
+    )
+  );
+
+-- Admin and Staff can update expenses
+CREATE POLICY "Admin and Staff can update expenses"
+  ON expenses FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE id = auth.uid() AND role IN ('ADMIN', 'STAFF')
+    )
+  );
+
+-- Only Admins can delete expenses
+CREATE POLICY "Admins can delete expenses"
+  ON expenses FOR DELETE
   USING (
     EXISTS (
       SELECT 1 FROM users

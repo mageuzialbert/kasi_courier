@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Building2, Users, BarChart3, Image, FileText, Loader2 } from 'lucide-react';
+import { Building2, Users, BarChart3, Image, FileText, Loader2, Settings, Receipt, CreditCard } from 'lucide-react';
 import { getUserRole } from '@/lib/roles';
 import { useRouter } from 'next/navigation';
 
@@ -48,6 +48,27 @@ export default function AdminDashboard() {
       color: 'bg-green-500',
     },
     {
+      title: 'Delivery Packages',
+      description: 'Manage delivery fee packages',
+      icon: Building2,
+      href: '/dashboard/admin/delivery-packages',
+      color: 'bg-cyan-500',
+    },
+    {
+      title: 'Expense Categories',
+      description: 'Manage expense categories',
+      icon: FileText,
+      href: '/dashboard/admin/expense-categories',
+      color: 'bg-pink-500',
+    },
+    {
+      title: 'Expenses',
+      description: 'Track and manage platform expenses',
+      icon: BarChart3,
+      href: '/dashboard/admin/expenses',
+      color: 'bg-red-500',
+    },
+    {
       title: 'Operations',
       description: 'View operations dashboard and metrics',
       icon: BarChart3,
@@ -56,7 +77,7 @@ export default function AdminDashboard() {
     },
     {
       title: 'Financial Analytics',
-      description: 'View revenue, invoices, and financial data',
+      description: 'View revenue, expenses, profit, and financial data',
       icon: BarChart3,
       href: '/dashboard/staff/financial',
       color: 'bg-emerald-500',
@@ -74,6 +95,27 @@ export default function AdminDashboard() {
       icon: FileText,
       href: '/dashboard/admin/cms/content',
       color: 'bg-orange-500',
+    },
+    {
+      title: 'Company Profile',
+      description: 'Manage company logo, contact info, and details',
+      icon: Settings,
+      href: '/dashboard/admin/company-profile',
+      color: 'bg-teal-500',
+    },
+    {
+      title: 'Invoice Management',
+      description: 'View, create, and manage invoices and proforma invoices',
+      icon: Receipt,
+      href: '/dashboard/admin/invoices',
+      color: 'bg-amber-500',
+    },
+    {
+      title: 'Payment Instructions',
+      description: 'Configure payment instructions for invoices',
+      icon: CreditCard,
+      href: '/dashboard/admin/payment-instructions',
+      color: 'bg-violet-500',
     },
   ];
 

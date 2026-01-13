@@ -15,7 +15,7 @@ const supabaseAdmin = createClient(
 
 export async function POST(request: NextRequest) {
   try {
-    const { businessName, email, phone, password, districtId } = await request.json();
+    const { businessName, email, phone, password, districtId, packageId } = await request.json();
 
     // Validation
     if (!businessName || !email || !phone || !password) {
@@ -101,6 +101,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get default package if packageId not provided
+    let finalPackageId = packageId;
+    if (!finalPackageId) {
+      const { data: defaultPackage } = await supabaseAdmin
+        .from('delivery_fee_packages')
+        .select('id')
+        .eq('is_default', true)
+        .eq('active', true)
+        .single();
+      
+      if (defaultPackage) {
+        finalPackageId = defaultPackage.id;
+      }
+    }
+
     // Create business record
     const { error: businessError } = await supabaseAdmin
       .from('businesses')
@@ -109,6 +124,7 @@ export async function POST(request: NextRequest) {
         phone: phoneNumber,
         user_id: authData.user.id,
         district_id: districtId || null,
+        package_id: finalPackageId || null,
         billing_cycle: 'WEEKLY',
         active: true,
       });

@@ -45,6 +45,51 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get business and its package to determine delivery fee
+    let deliveryFee = 0;
+    if (businessId) {
+      const { data: business, error: businessError } = await supabaseAdmin
+        .from('businesses')
+        .select(`
+          id,
+          package_id,
+          delivery_fee_packages:package_id (
+            id,
+            fee_per_delivery
+          )
+        `)
+        .eq('id', businessId)
+        .single();
+
+      if (business && business.delivery_fee_packages) {
+        deliveryFee = parseFloat((business.delivery_fee_packages as any).fee_per_delivery.toString());
+      } else {
+        // If business not found or no package, use default package
+        const { data: defaultPackage } = await supabaseAdmin
+          .from('delivery_fee_packages')
+          .select('fee_per_delivery')
+          .eq('is_default', true)
+          .eq('active', true)
+          .single();
+
+        if (defaultPackage) {
+          deliveryFee = parseFloat(defaultPackage.fee_per_delivery.toString());
+        }
+      }
+    } else {
+      // No business ID, use default package
+      const { data: defaultPackage } = await supabaseAdmin
+        .from('delivery_fee_packages')
+        .select('fee_per_delivery')
+        .eq('is_default', true)
+        .eq('active', true)
+        .single();
+
+      if (defaultPackage) {
+        deliveryFee = parseFloat(defaultPackage.fee_per_delivery.toString());
+      }
+    }
+
     // Create delivery
     const { data: deliveryData, error: deliveryError } = await supabaseAdmin
       .from('deliveries')
@@ -74,6 +119,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Create charge with package fee
+    if (deliveryFee > 0 && businessId) {
+      await supabaseAdmin
+        .from('charges')
+        .insert({
+          delivery_id: deliveryData.id,
+          business_id: businessId,
+          amount: deliveryFee,
+          description: 'Delivery fee - Quick order',
+        });
+    }
+
     // Create delivery event
     await supabaseAdmin
       .from('delivery_events')
@@ -88,6 +145,7 @@ export async function POST(request: NextRequest) {
       success: true,
       deliveryId: deliveryData.id,
       message: 'Delivery created successfully',
+      deliveryFee,
     });
   } catch (error) {
     console.error('Error creating quick order:', error);

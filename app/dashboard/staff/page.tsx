@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Package, Clock, CheckCircle, TrendingUp, Plus, UserCheck, Loader2 } from 'lucide-react';
+import { Package, Clock, CheckCircle, TrendingUp, Plus, UserCheck, Loader2, Receipt } from 'lucide-react';
 import { getUserRole } from '@/lib/roles';
 import Link from 'next/link';
 import DeliveriesTable from '@/components/deliveries/DeliveriesTable';
@@ -162,6 +162,23 @@ export default function StaffDashboard() {
               <p className="text-2xl font-bold text-gray-900">{count}</p>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Link
+            href="/dashboard/staff/invoices/create"
+            className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors"
+          >
+            <Receipt className="w-8 h-8 text-primary" />
+            <div>
+              <h3 className="font-semibold text-gray-900">Create Invoice</h3>
+              <p className="text-sm text-gray-600">Generate invoice for a business</p>
+            </div>
+          </Link>
         </div>
       </div>
 

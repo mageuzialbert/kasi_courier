@@ -4,6 +4,7 @@ import AboutSection from '@/components/landing/AboutSection';
 import BusinessPartners from '@/components/landing/BusinessPartners';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase-server';
 
 async function getSliders() {
   try {
@@ -77,11 +78,37 @@ async function getBusinessesData() {
   }
 }
 
+async function getCompanyProfile() {
+  try {
+    const supabaseClient = await createClient();
+    const { data, error } = await supabaseClient
+      .from('company_profile')
+      .select('*')
+      .eq('id', '00000000-0000-0000-0000-000000000001')
+      .single();
+
+    if (error) {
+      // If no profile exists, return null
+      if (error.code === 'PGRST116') {
+        return null;
+      }
+      console.error('Error fetching company profile:', error);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error fetching company profile:', error);
+    return null;
+  }
+}
+
 export default async function Home() {
-  const [sliders, aboutContent, businessesData] = await Promise.all([
+  const [sliders, aboutContent, businessesData, companyProfile] = await Promise.all([
     getSliders(),
     getAboutContent(),
     getBusinessesData(),
+    getCompanyProfile(),
   ]);
 
   return (
@@ -132,9 +159,47 @@ export default async function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
-              <h3 className="text-xl font-bold mb-4">Kasi Courier Services</h3>
+              {companyProfile?.logo_url ? (
+                <img
+                  src={companyProfile.logo_url}
+                  alt={companyProfile.company_name || 'Company Logo'}
+                  className="h-12 mb-4 object-contain"
+                />
+              ) : (
+                <h3 className="text-xl font-bold mb-4">
+                  {companyProfile?.company_name || 'Kasi Courier Services'}
+                </h3>
+              )}
               <p className="text-gray-400">
-                Your trusted B2B logistics partner delivering excellence across Tanzania.
+                {companyProfile?.address && (
+                  <>
+                    {companyProfile.address}
+                    {companyProfile.city && `, ${companyProfile.city}`}
+                    {companyProfile.region && `, ${companyProfile.region}`}
+                    {companyProfile.postal_code && ` ${companyProfile.postal_code}`}
+                    <br />
+                  </>
+                )}
+                {companyProfile?.phone && (
+                  <>
+                    Phone: <a href={`tel:${companyProfile.phone}`} className="hover:text-white transition-colors">{companyProfile.phone}</a>
+                    <br />
+                  </>
+                )}
+                {companyProfile?.email && (
+                  <>
+                    Email: <a href={`mailto:${companyProfile.email}`} className="hover:text-white transition-colors">{companyProfile.email}</a>
+                    <br />
+                  </>
+                )}
+                {companyProfile?.website && (
+                  <>
+                    Website: <a href={companyProfile.website} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">{companyProfile.website}</a>
+                  </>
+                )}
+                {!companyProfile && (
+                  'Your trusted B2B logistics partner delivering excellence across Tanzania.'
+                )}
               </p>
             </div>
             <div>
@@ -159,13 +224,42 @@ export default async function Home() {
             </div>
             <div>
               <h3 className="text-xl font-bold mb-4">Contact</h3>
-              <p className="text-gray-400">
-                For inquiries, please contact us through your dashboard.
-              </p>
+              {companyProfile ? (
+                <div className="space-y-2 text-gray-400">
+                  {companyProfile.phone && (
+                    <p>
+                      <span className="font-medium">Phone:</span>{' '}
+                      <a href={`tel:${companyProfile.phone}`} className="hover:text-white transition-colors">
+                        {companyProfile.phone}
+                      </a>
+                    </p>
+                  )}
+                  {companyProfile.email && (
+                    <p>
+                      <span className="font-medium">Email:</span>{' '}
+                      <a href={`mailto:${companyProfile.email}`} className="hover:text-white transition-colors">
+                        {companyProfile.email}
+                      </a>
+                    </p>
+                  )}
+                  {companyProfile.address && (
+                    <p>
+                      <span className="font-medium">Address:</span>{' '}
+                      {companyProfile.address}
+                      {companyProfile.city && `, ${companyProfile.city}`}
+                      {companyProfile.region && `, ${companyProfile.region}`}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-gray-400">
+                  For inquiries, please contact us through your dashboard.
+                </p>
+              )}
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-gray-800 text-center text-gray-400">
-            <p>&copy; {new Date().getFullYear()} Kasi Courier Services. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} {companyProfile?.company_name || 'Kasi Courier Services'}. All rights reserved.</p>
           </div>
         </div>
       </footer>

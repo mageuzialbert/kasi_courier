@@ -1,12 +1,28 @@
 'use client';
 
-import { DollarSign, TrendingUp, FileText, AlertCircle } from 'lucide-react';
+import { DollarSign, TrendingUp, FileText, AlertCircle, TrendingDown, Calculator } from 'lucide-react';
 
 interface FinancialData {
   revenue: {
     total: number;
     thisWeek: number;
     thisMonth: number;
+    filtered?: number;
+  };
+  expenses: {
+    total: number;
+    breakdown: Array<{
+      categoryName: string;
+      amount: number;
+    }>;
+    trends: Array<{
+      date: string;
+      amount: number;
+    }>;
+  };
+  profit: {
+    total: number;
+    margin: number;
   };
   invoices: {
     total: number;
@@ -35,6 +51,10 @@ interface FinancialData {
     date: string;
     revenue: number;
   }>;
+  dateRange?: {
+    start: string | null;
+    end: string | null;
+  };
 }
 
 interface FinancialDashboardProps {
@@ -57,16 +77,22 @@ function formatDate(dateString: string): string {
 }
 
 export default function FinancialDashboard({ data }: FinancialDashboardProps) {
+  const displayRevenue = data.revenue.filtered !== undefined ? data.revenue.filtered : data.revenue.total;
+  const profitMargin = data.profit.margin;
+  const isProfitPositive = data.profit.total >= 0;
+
   return (
     <div className="space-y-6">
-      {/* Revenue Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Revenue, Expenses, and Profit Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Total Revenue</p>
+              <p className="text-sm text-gray-600">
+                {data.revenue.filtered !== undefined ? 'Revenue (Selected Period)' : 'Total Revenue'}
+              </p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
-                {formatCurrency(data.revenue.total)}
+                {formatCurrency(displayRevenue)}
               </p>
             </div>
             <DollarSign className="w-8 h-8 text-primary" />
@@ -76,27 +102,53 @@ export default function FinancialDashboard({ data }: FinancialDashboardProps) {
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">This Week</p>
+              <p className="text-sm text-gray-600">Total Expenses</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
-                {formatCurrency(data.revenue.thisWeek)}
+                {formatCurrency(data.expenses.total)}
               </p>
             </div>
-            <TrendingUp className="w-8 h-8 text-blue-500" />
+            <TrendingDown className="w-8 h-8 text-red-500" />
           </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">This Month</p>
+              <p className="text-sm text-gray-600">Profit</p>
+              <p className={`text-2xl font-bold mt-1 ${isProfitPositive ? 'text-green-600' : 'text-red-600'}`}>
+                {formatCurrency(data.profit.total)}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                Margin: {profitMargin.toFixed(1)}%
+              </p>
+            </div>
+            <Calculator className={`w-8 h-8 ${isProfitPositive ? 'text-green-500' : 'text-red-500'}`} />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">This Month Revenue</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
                 {formatCurrency(data.revenue.thisMonth)}
               </p>
             </div>
-            <TrendingUp className="w-8 h-8 text-green-500" />
+            <TrendingUp className="w-8 h-8 text-blue-500" />
           </div>
         </div>
       </div>
+
+      {/* Date Range Display */}
+      {data.dateRange && (data.dateRange.start || data.dateRange.end) && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-sm text-blue-800">
+            <span className="font-semibold">Date Range:</span>{' '}
+            {data.dateRange.start ? formatDate(data.dateRange.start) : 'All time'} -{' '}
+            {data.dateRange.end ? formatDate(data.dateRange.end) : 'Today'}
+          </p>
+        </div>
+      )}
 
       {/* Invoices Overview */}
       <div className="bg-white rounded-lg shadow-md p-6">
@@ -219,6 +271,95 @@ export default function FinancialDashboard({ data }: FinancialDashboardProps) {
             </table>
           </div>
         )}
+      </div>
+
+      {/* Expense Breakdown by Category */}
+      {data.expenses.breakdown.length > 0 && (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold mb-4">Expenses by Category</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Category
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Amount
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Percentage
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {data.expenses.breakdown.map((item, index) => {
+                  const percentage = data.expenses.total > 0 
+                    ? (item.amount / data.expenses.total) * 100 
+                    : 0;
+                  return (
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                        {item.categoryName}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900">
+                        {formatCurrency(item.amount)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-24 bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-red-500 h-2 rounded-full"
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                          <span className="text-sm text-gray-600 w-12">
+                            {percentage.toFixed(1)}%
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Revenue vs Expenses Comparison */}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h3 className="text-lg font-semibold mb-4">Revenue vs Expenses</h3>
+        <div className="space-y-4">
+          <div>
+            <div className="flex justify-between text-sm mb-1">
+              <span className="text-gray-600">Revenue</span>
+              <span className="font-medium text-gray-900">{formatCurrency(displayRevenue)}</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3">
+              <div
+                className="bg-primary h-3 rounded-full"
+                style={{
+                  width: `${Math.min(100, (displayRevenue / Math.max(displayRevenue, data.expenses.total)) * 100)}%`,
+                }}
+              />
+            </div>
+          </div>
+          <div>
+            <div className="flex justify-between text-sm mb-1">
+              <span className="text-gray-600">Expenses</span>
+              <span className="font-medium text-gray-900">{formatCurrency(data.expenses.total)}</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3">
+              <div
+                className="bg-red-500 h-3 rounded-full"
+                style={{
+                  width: `${Math.min(100, (data.expenses.total / Math.max(displayRevenue, data.expenses.total)) * 100)}%`,
+                }}
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Revenue Trends */}

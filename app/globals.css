@@ -31,3 +31,26 @@ body {
     text-wrap: balance;
   }
 }
+
+/* Print styles - Hide dashboard layout header and sidebar */
+@media print {
+  /* Hide all navigation bars (dashboard header) */
+  nav[class*="bg-white"][class*="border-b"] {
+    display: none !important;
+  }
+  /* Hide all sidebars */
+  aside[class*="bg-white"][class*="border-r"],
+  aside[class*="fixed"],
+  aside[class*="static"] {
+    display: none !important;
+  }
+  /* Remove padding from main content area */
+  main[class*="flex-1"],
+  main[class*="p-"] {
+    padding: 0 !important;
+  }
+  /* Hide mobile menu overlay */
+  div[class*="fixed"][class*="inset-0"][class*="bg-black"] {
+    display: none !important;
+  }
+}
