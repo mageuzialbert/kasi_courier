@@ -136,50 +136,74 @@ export async function POST(request: NextRequest) {
     }
 
     // Create a session using Admin API
-    // generateLink doesn't return tokens directly - we need to use a different approach
-    // Solution: Temporarily set a random password, sign in to get tokens
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    // Try impersonateUser first (preserves password), fallback to temp password if needed
+    let accessToken: string | null = null;
+    let refreshToken: string | null = null;
     
-    // Generate a secure temporary password
-    const tempPassword = Math.random().toString(36).slice(-16) + Math.random().toString(36).slice(-16) + 'A1!';
+    // Method 1: Try impersonateUser (best - preserves password)
+    try {
+      const { data: impersonateData, error: impersonateError } = await supabaseAdmin.auth.admin.impersonateUser({
+        id: authUser.id,
+      });
+      
+      if (!impersonateError && impersonateData?.session) {
+        accessToken = impersonateData.session.access_token;
+        refreshToken = impersonateData.session.refresh_token;
+      } else {
+        console.error('impersonateUser failed:', impersonateError);
+      }
+    } catch (err: any) {
+      console.error('impersonateUser exception:', err?.message || err);
+    }
     
-    // Update user's password temporarily using Admin API
-    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-      authUser.id,
-      { password: tempPassword }
-    );
+    // Method 2: Fallback - temporary password (only if impersonateUser fails)
+    // Note: This will change the password, but it's necessary if impersonateUser isn't available
+    if (!accessToken || !refreshToken) {
+      console.warn('Using temporary password fallback for OTP login');
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+      const tempPassword = Math.random().toString(36).slice(-16) + Math.random().toString(36).slice(-16) + 'A1!';
+      
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+        authUser.id,
+        { password: tempPassword }
+      );
+      
+      if (updateError) {
+        console.error('Error updating password:', updateError);
+        return NextResponse.json(
+          { error: 'Failed to create session' },
+          { status: 500 }
+        );
+      }
+      
+      const supabasePublic = createClient(
+        supabaseUrl,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      
+      const { data: authData, error: signInError } = await supabasePublic.auth.signInWithPassword({
+        email: userData.email,
+        password: tempPassword,
+      });
+      
+      if (signInError || !authData?.session) {
+        console.error('Error signing in with temp password:', signInError);
+        return NextResponse.json(
+          { error: 'Failed to create session' },
+          { status: 500 }
+        );
+      }
+      
+      accessToken = authData.session.access_token;
+      refreshToken = authData.session.refresh_token;
+    }
     
-    if (updateError) {
+    if (!accessToken || !refreshToken) {
       return NextResponse.json(
         { error: 'Failed to create session' },
         { status: 500 }
       );
     }
-    
-    // Sign in with the temporary password to get session tokens
-    const supabasePublic = createClient(
-      supabaseUrl,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-    
-    const { data: authData, error: signInError } = await supabasePublic.auth.signInWithPassword({
-      email: userData.email,
-      password: tempPassword,
-    });
-    
-    if (signInError || !authData?.session) {
-      return NextResponse.json(
-        { error: 'Failed to create session' },
-        { status: 500 }
-      );
-    }
-    
-    const accessToken = authData.session.access_token;
-    const refreshToken = authData.session.refresh_token;
-    
-    // Note: We don't reset the password back - the user can change it later if needed
-    // This is acceptable since OTP login is a valid authentication method
-    // The temporary password is secure (random) and the user can set their own password later
     
     // Return the session tokens
     return NextResponse.json({

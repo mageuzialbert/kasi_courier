@@ -32,6 +32,20 @@ body {
   }
 }
 
+/* Logo horizontal animation */
+@keyframes slideHorizontal {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(10px);
+  }
+}
+
+.animate-slide-horizontal {
+  animation: slideHorizontal 3s ease-in-out infinite;
+}
+
 /* Print styles - Hide dashboard layout header and sidebar */
 @media print {
   /* Hide all navigation bars (dashboard header) */

@@ -218,3 +218,33 @@ export async function getCurrentUser() {
 
   return user;
 }
+
+export async function resetPassword(newPassword: string, confirmPassword: string) {
+  // Validation
+  if (!newPassword || !confirmPassword) {
+    throw new Error('New password and confirmation are required');
+  }
+
+  if (newPassword !== confirmPassword) {
+    throw new Error('Passwords do not match');
+  }
+
+  if (newPassword.length < 8) {
+    throw new Error('Password must be at least 8 characters long');
+  }
+
+  // Call API route to reset password
+  const response = await fetch('/api/auth/reset-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ newPassword, confirmPassword }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to reset password');
+  }
+
+  const result = await response.json();
+  return result;
+}

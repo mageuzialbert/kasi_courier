@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Save, Loader2, Upload, X } from 'lucide-react';
+import { resetPassword } from '@/lib/auth';
+import { Save, Loader2, Upload, X, Lock } from 'lucide-react';
 
 interface BusinessProfile {
   name: string;
@@ -46,6 +47,11 @@ export default function BusinessProfilePage() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [resettingPassword, setResettingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
 
   useEffect(() => {
     loadProfile();
@@ -365,6 +371,25 @@ export default function BusinessProfilePage() {
     }
   }
 
+  async function handlePasswordReset(e: React.FormEvent) {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+    setResettingPassword(true);
+
+    try {
+      await resetPassword(newPassword, confirmPassword);
+      setPasswordSuccess('Password updated successfully!');
+      setNewPassword('');
+      setConfirmPassword('');
+      setTimeout(() => setPasswordSuccess(''), 3000);
+    } catch (err) {
+      setPasswordError(err instanceof Error ? err.message : 'Failed to reset password');
+    } finally {
+      setResettingPassword(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -608,6 +633,88 @@ export default function BusinessProfilePage() {
           </button>
         </div>
       </form>
+
+      {/* Password Reset Section */}
+      <div className="bg-white rounded-lg shadow-md p-6 mt-6">
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+            <Lock className="w-5 h-5" />
+            Password Settings
+          </h2>
+          <p className="text-gray-600 mt-1 text-sm">
+            Set a new password for your account. This is especially useful if you logged in via SMS code.
+          </p>
+        </div>
+
+        {passwordError && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
+            {passwordError}
+          </div>
+        )}
+
+        {passwordSuccess && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-md text-sm">
+            {passwordSuccess}
+          </div>
+        )}
+
+        <form onSubmit={handlePasswordReset} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                New Password *
+              </label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                minLength={8}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
+                placeholder="Enter new password"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Must be at least 8 characters long
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Confirm Password *
+              </label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                minLength={8}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
+                placeholder="Confirm new password"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-4 border-t">
+            <button
+              type="submit"
+              disabled={resettingPassword || !newPassword || !confirmPassword}
+              className="flex items-center space-x-2 bg-primary text-white px-6 py-2 rounded-md hover:bg-primary-dark transition-colors disabled:opacity-50 font-medium"
+            >
+              {resettingPassword ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Updating...</span>
+                </>
+              ) : (
+                <>
+                  <Lock className="w-5 h-5" />
+                  <span>Update Password</span>
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

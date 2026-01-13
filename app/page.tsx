@@ -160,11 +160,16 @@ export default async function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
               {companyProfile?.logo_url ? (
-                <img
-                  src={companyProfile.logo_url}
-                  alt={companyProfile.company_name || 'Company Logo'}
-                  className="h-12 mb-4 object-contain"
-                />
+                <div className="mb-4">
+                  <img
+                    src={companyProfile.logo_url}
+                    alt={companyProfile.company_name || 'Company Logo'}
+                    className="h-12 mb-2 object-contain animate-slide-horizontal"
+                  />
+                  <h3 className="text-xl font-bold text-white">
+                    {companyProfile?.company_name || 'Kasi Courier Services'}
+                  </h3>
+                </div>
               ) : (
                 <h3 className="text-xl font-bold mb-4">
                   {companyProfile?.company_name || 'Kasi Courier Services'}
