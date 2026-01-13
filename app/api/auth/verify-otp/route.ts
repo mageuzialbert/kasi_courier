@@ -135,75 +135,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create a session using Admin API
-    // Try impersonateUser first (preserves password), fallback to temp password if needed
-    let accessToken: string | null = null;
-    let refreshToken: string | null = null;
+    // Create a session using temporary password method
+    // Note: This will change the user's password, but it's necessary for OTP-based login
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const tempPassword = Math.random().toString(36).slice(-16) + Math.random().toString(36).slice(-16) + 'A1!';
     
-    // Method 1: Try impersonateUser (best - preserves password)
-    try {
-      const { data: impersonateData, error: impersonateError } = await supabaseAdmin.auth.admin.impersonateUser({
-        id: authUser.id,
-      });
-      
-      if (!impersonateError && impersonateData?.session) {
-        accessToken = impersonateData.session.access_token;
-        refreshToken = impersonateData.session.refresh_token;
-      } else {
-        console.error('impersonateUser failed:', impersonateError);
-      }
-    } catch (err: any) {
-      console.error('impersonateUser exception:', err?.message || err);
-    }
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+      authUser.id,
+      { password: tempPassword }
+    );
     
-    // Method 2: Fallback - temporary password (only if impersonateUser fails)
-    // Note: This will change the password, but it's necessary if impersonateUser isn't available
-    if (!accessToken || !refreshToken) {
-      console.warn('Using temporary password fallback for OTP login');
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-      const tempPassword = Math.random().toString(36).slice(-16) + Math.random().toString(36).slice(-16) + 'A1!';
-      
-      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-        authUser.id,
-        { password: tempPassword }
-      );
-      
-      if (updateError) {
-        console.error('Error updating password:', updateError);
-        return NextResponse.json(
-          { error: 'Failed to create session' },
-          { status: 500 }
-        );
-      }
-      
-      const supabasePublic = createClient(
-        supabaseUrl,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
-      
-      const { data: authData, error: signInError } = await supabasePublic.auth.signInWithPassword({
-        email: userData.email,
-        password: tempPassword,
-      });
-      
-      if (signInError || !authData?.session) {
-        console.error('Error signing in with temp password:', signInError);
-        return NextResponse.json(
-          { error: 'Failed to create session' },
-          { status: 500 }
-        );
-      }
-      
-      accessToken = authData.session.access_token;
-      refreshToken = authData.session.refresh_token;
-    }
-    
-    if (!accessToken || !refreshToken) {
+    if (updateError) {
+      console.error('Error updating password:', updateError);
       return NextResponse.json(
         { error: 'Failed to create session' },
         { status: 500 }
       );
     }
+    
+    const supabasePublic = createClient(
+      supabaseUrl,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    
+    const { data: authData, error: signInError } = await supabasePublic.auth.signInWithPassword({
+      email: userData.email,
+      password: tempPassword,
+    });
+    
+    if (signInError || !authData?.session) {
+      console.error('Error signing in with temp password:', signInError);
+      return NextResponse.json(
+        { error: 'Failed to create session' },
+        { status: 500 }
+      );
+    }
+    
+    const accessToken = authData.session.access_token;
+    const refreshToken = authData.session.refresh_token;
     
     // Return the session tokens
     return NextResponse.json({
