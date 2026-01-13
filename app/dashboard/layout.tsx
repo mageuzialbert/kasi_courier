@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, Package, Receipt, LogOut, Loader2, User, Shield, FileText, BarChart3, Image } from 'lucide-react';
+import { LayoutDashboard, Package, Receipt, LogOut, Loader2, User, Shield, FileText, BarChart3, Image, Menu, X } from 'lucide-react';
 import { getCurrentUser, logout } from '@/lib/auth';
 import { getUserRole } from '@/lib/roles';
 import VerificationBanner from './business/components/VerificationBanner';
@@ -18,6 +18,7 @@ export default function DashboardLayout({
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     async function checkAuth() {
@@ -121,12 +122,26 @@ export default function DashboardLayout({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
+              {/* Mobile menu button */}
+              {navItems.length > 0 && (
+                <button
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  className="lg:hidden mr-3 p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                  aria-label="Toggle sidebar"
+                >
+                  {sidebarOpen ? (
+                    <X className="w-6 h-6" />
+                  ) : (
+                    <Menu className="w-6 h-6" />
+                  )}
+                </button>
+              )}
               <Link href={getDashboardBase()} className="flex items-center">
                 <span className="text-2xl font-bold text-primary">Kasi Courier</span>
               </Link>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-gray-600 hidden sm:inline">
                 {user?.user_metadata?.business_name || user?.email}
               </span>
               <button
@@ -134,17 +149,35 @@ export default function DashboardLayout({
                 className="flex items-center space-x-2 text-sm text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md hover:bg-gray-100"
               >
                 <LogOut className="w-4 h-4" />
-                <span>Logout</span>
+                <span className="hidden sm:inline">Logout</span>
               </button>
             </div>
           </div>
         </div>
       </nav>
 
-      <div className="flex">
+      <div className="flex relative">
+        {/* Mobile Overlay */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
         {/* Sidebar Navigation */}
         {navItems.length > 0 && (
-          <aside className="w-64 bg-white border-r border-gray-200 min-h-[calc(100vh-4rem)]">
+          <aside
+            className={`
+              fixed lg:static
+              top-16 left-0
+              w-64 bg-white border-r border-gray-200
+              min-h-[calc(100vh-4rem)] lg:min-h-[calc(100vh-4rem)]
+              z-50 lg:z-auto
+              transform transition-transform duration-300 ease-in-out
+              ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+            `}
+          >
             <nav className="p-4 space-y-2">
               {navItems.map((item) => {
                 const isActive = pathname === item.href;
@@ -152,6 +185,7 @@ export default function DashboardLayout({
                   <Link
                     key={item.href}
                     href={item.href}
+                    onClick={() => setSidebarOpen(false)}
                     className={`flex items-center space-x-3 px-4 py-3 rounded-md transition-colors ${
                       isActive
                         ? 'bg-primary text-white'
@@ -168,7 +202,7 @@ export default function DashboardLayout({
         )}
 
         {/* Main Content */}
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-6 w-full lg:w-auto">
           {role === 'BUSINESS' && <VerificationBanner />}
           {children}
         </main>
