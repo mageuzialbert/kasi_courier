@@ -1,50 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { cookies } from 'next/headers';
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  }
-);
-
-// Helper to get authenticated user and role
-async function getAuthenticatedUser() {
-  const cookieStore = await cookies();
-  
-  const supabaseClient = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
-        },
-        set(name: string, value: string, options: any) {},
-        remove(name: string, options: any) {},
-      },
-    } as any
-  );
-
-  const { data: { user }, error } = await supabaseClient.auth.getUser();
-  
-  if (error || !user) {
-    return { user: null, role: null };
-  }
-
-  const { data: userData } = await supabaseAdmin
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  return { user, role: userData?.role || null };
-}
+import { getAuthenticatedUser, supabaseAdmin } from '@/lib/auth-server';
+import { requirePermission } from '@/lib/permissions-server';
 
 // Valid status transitions
 const validTransitions: Record<string, string[]> = {
@@ -70,9 +26,11 @@ export async function PUT(
       );
     }
 
-    if (role !== 'RIDER') {
+    // Check permission for deliveries.update_status
+    const { allowed, error: permError } = await requirePermission(user.id, role || '', 'deliveries.update_status');
+    if (!allowed) {
       return NextResponse.json(
-        { error: 'Forbidden' },
+        { error: permError || 'Permission denied' },
         { status: 403 }
       );
     }

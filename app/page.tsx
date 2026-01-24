@@ -3,11 +3,26 @@ import CTABar from '@/components/landing/CTABar';
 import AboutSection from '@/components/landing/AboutSection';
 import BusinessPartners from '@/components/landing/BusinessPartners';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
 import { createClient } from '@/lib/supabase-server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
+
+// Create admin client for public data fetching (bypasses RLS)
+function getAdminClient() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
+}
 
 async function getSliders() {
   try {
+    const supabase = getAdminClient();
     const { data, error } = await supabase
       .from('slider_images')
       .select('*')
@@ -28,6 +43,7 @@ async function getSliders() {
 
 async function getAboutContent() {
   try {
+    const supabase = getAdminClient();
     const { data, error } = await supabase
       .from('cms_content')
       .select('content')
@@ -47,6 +63,9 @@ async function getAboutContent() {
 
 async function getBusinessesData() {
   try {
+    const supabase = getAdminClient();
+    
+    // Get businesses with logos for display
     const { data: businesses, error: businessesError } = await supabase
       .from('businesses')
       .select('id, name, logo_url')
@@ -54,14 +73,25 @@ async function getBusinessesData() {
       .not('logo_url', 'is', null)
       .limit(20);
 
-    const { count: totalBusinesses } = await supabase
+    // Count ALL businesses regardless of active status
+    const { count: totalBusinesses, error: countError } = await supabase
       .from('businesses')
-      .select('*', { count: 'exact', head: true })
-      .eq('active', true);
+      .select('*', { count: 'exact', head: true });
 
-    const { count: totalDeliveries } = await supabase
+    // Count ALL deliveries regardless of status
+    const { count: totalDeliveries, error: deliveriesError } = await supabase
       .from('deliveries')
       .select('*', { count: 'exact', head: true });
+
+    if (businessesError) {
+      console.error('Error fetching businesses:', businessesError);
+    }
+    if (countError) {
+      console.error('Error counting businesses:', countError);
+    }
+    if (deliveriesError) {
+      console.error('Error counting deliveries:', deliveriesError);
+    }
 
     return {
       businesses: businesses || [],

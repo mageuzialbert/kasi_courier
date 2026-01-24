@@ -1,14 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser, supabaseAdmin } from '@/lib/auth-server';
+import { requirePermission } from '@/lib/permissions-server';
 
 // GET - List expenses with filters
 export async function GET(request: NextRequest) {
   try {
     const { user, role } = await getAuthenticatedUser();
 
-    if (!user || (role !== 'ADMIN' && role !== 'STAFF')) {
+    if (!user) {
       return NextResponse.json(
-        { error: 'Forbidden' },
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Check permission for expenses.view
+    const { allowed, error: permError } = await requirePermission(user.id, role || '', 'expenses.view');
+    if (!allowed) {
+      return NextResponse.json(
+        { error: permError || 'Permission denied' },
         { status: 403 }
       );
     }
@@ -74,9 +84,18 @@ export async function POST(request: NextRequest) {
   try {
     const { user, role } = await getAuthenticatedUser();
 
-    if (!user || (role !== 'ADMIN' && role !== 'STAFF')) {
+    if (!user) {
       return NextResponse.json(
-        { error: 'Forbidden' },
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Check permission for expenses.create
+    const { allowed, error: permError } = await requirePermission(user.id, role || '', 'expenses.create');
+    if (!allowed) {
+      return NextResponse.json(
+        { error: permError || 'Permission denied' },
         { status: 403 }
       );
     }

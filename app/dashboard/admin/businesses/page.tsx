@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Filter, X, Loader2 } from 'lucide-react';
-import { getUserRole } from '@/lib/roles';
+import { Search, Filter, X, Loader2, Plus } from 'lucide-react';
+import { usePermissions } from '@/lib/permissions-context';
 import BusinessesTable from '@/components/businesses/BusinessesTable';
 import BusinessForm, { BusinessFormData } from '@/components/businesses/BusinessForm';
 import BusinessDetailsModal from '@/components/businesses/BusinessDetailsModal';
@@ -25,7 +25,7 @@ interface Business {
 
 export default function AdminBusinessesPage() {
   const router = useRouter();
-  const [role, setRole] = useState<string | null>(null);
+  const { role, hasPermission, hasModuleAccess, loading: permissionsLoading } = usePermissions();
   const [loading, setLoading] = useState(true);
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -37,21 +37,26 @@ export default function AdminBusinessesPage() {
   const [error, setError] = useState('');
   const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
 
+  // Permission checks
+  const canAccess = role === 'ADMIN' || hasModuleAccess('businesses');
+  const canCreate = role === 'ADMIN' || hasPermission('businesses.create');
+  const canEdit = role === 'ADMIN' || hasPermission('businesses.update');
+
   useEffect(() => {
-    async function checkRole() {
-      const userRole = await getUserRole();
-      if (userRole !== 'ADMIN' && userRole !== 'STAFF') {
-        router.push('/dashboard/business');
-        return;
-      }
-      setRole(userRole);
-      loadBusinesses();
+    if (permissionsLoading) return;
+    
+    if (!canAccess) {
+      router.push('/dashboard/business');
+      return;
     }
-    checkRole();
-  }, [router]);
+    
+    loadBusinesses();
+  }, [canAccess, permissionsLoading, router]);
 
   // Debounced search effect
   useEffect(() => {
+    if (permissionsLoading || !canAccess) return;
+    
     if (debounceTimer) {
       clearTimeout(debounceTimer);
     }
@@ -97,38 +102,65 @@ export default function AdminBusinessesPage() {
   }
 
   async function handleSubmit(data: BusinessFormData) {
-    if (!editingBusiness) return;
-
     setSubmitting(true);
     setError('');
 
     try {
-      const updateData: any = {
-        name: data.name,
-        phone: data.phone,
-        active: data.active,
-      };
+      if (editingBusiness) {
+        // Update existing business
+        const updateData: any = {
+          name: data.name,
+          phone: data.phone,
+          active: data.active,
+        };
 
-      if (data.delivery_fee.trim()) {
-        const fee = parseFloat(data.delivery_fee);
-        if (isNaN(fee) || fee < 0) {
-          throw new Error('Delivery fee must be a positive number');
+        if (data.delivery_fee.trim()) {
+          const fee = parseFloat(data.delivery_fee);
+          if (isNaN(fee) || fee < 0) {
+            throw new Error('Delivery fee must be a positive number');
+          }
+          updateData.delivery_fee = fee;
+        } else {
+          updateData.delivery_fee = null;
         }
-        updateData.delivery_fee = fee;
+
+        const response = await fetch(`/api/admin/businesses/${editingBusiness.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updateData),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to update business');
+        }
       } else {
-        // Explicitly set to null to clear the delivery fee
-        updateData.delivery_fee = null;
-      }
+        // Create new business
+        const createData: any = {
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          password: data.password,
+        };
 
-      const response = await fetch(`/api/admin/businesses/${editingBusiness.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updateData),
-      });
+        if (data.delivery_fee.trim()) {
+          const fee = parseFloat(data.delivery_fee);
+          if (isNaN(fee) || fee < 0) {
+            throw new Error('Delivery fee must be a positive number');
+          }
+          createData.delivery_fee = fee;
+        }
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update business');
+        const response = await fetch('/api/admin/businesses', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(createData),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to create business');
+        }
       }
 
       setShowForm(false);
@@ -173,6 +205,12 @@ export default function AdminBusinessesPage() {
     setError('');
   }
 
+  function handleCreate() {
+    setEditingBusiness(null);
+    setShowForm(true);
+    setError('');
+  }
+
   function handleCancel() {
     setShowForm(false);
     setEditingBusiness(null);
@@ -196,62 +234,75 @@ export default function AdminBusinessesPage() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Business Management</h1>
+        {!showForm && canCreate && (
+          <button
+            onClick={handleCreate}
+            className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            Register Business
+          </button>
+        )}
       </div>
 
       {/* Filters Section */}
-      <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-        <div className="flex flex-col md:flex-row gap-4 items-center">
-          {/* Search Input */}
-          <div className="flex-1 w-full md:w-auto">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by name or phone..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
-              />
+      {!showForm && (
+        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+          <div className="flex flex-col md:flex-row gap-4 items-center">
+            {/* Search Input */}
+            <div className="flex-1 w-full md:w-auto">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by name or phone..."
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
             </div>
+
+            {/* Status Filter */}
+            <div className="flex items-center gap-2">
+              <Filter className="w-5 h-5 text-gray-500" />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="ACTIVE">Active</option>
+                <option value="INACTIVE">Inactive</option>
+              </select>
+            </div>
+
+            {/* Clear Filters */}
+            {(searchQuery || statusFilter !== 'ALL') && (
+              <button
+                onClick={clearFilters}
+                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+              >
+                <X className="w-4 h-4" />
+                Clear
+              </button>
+            )}
           </div>
 
-          {/* Status Filter */}
-          <div className="flex items-center gap-2">
-            <Filter className="w-5 h-5 text-gray-500" />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
-            >
-              <option value="ALL">All Statuses</option>
-              <option value="ACTIVE">Active</option>
-              <option value="INACTIVE">Inactive</option>
-            </select>
+          {/* Results Count */}
+          <div className="mt-4 text-sm text-gray-600">
+            Showing {businesses.length} business{businesses.length !== 1 ? 'es' : ''}
           </div>
-
-          {/* Clear Filters */}
-          {(searchQuery || statusFilter !== 'ALL') && (
-            <button
-              onClick={clearFilters}
-              className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-            >
-              <X className="w-4 h-4" />
-              Clear
-            </button>
-          )}
         </div>
+      )}
 
-        {/* Results Count */}
-        <div className="mt-4 text-sm text-gray-600">
-          Showing {businesses.length} business{businesses.length !== 1 ? 'es' : ''}
-        </div>
-      </div>
-
-      {/* Edit Form */}
-      {showForm && editingBusiness && (
+      {/* Create/Edit Form */}
+      {showForm && (
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Edit Business</h2>
+            <h2 className="text-xl font-semibold">
+              {editingBusiness ? 'Edit Business' : 'Register New Business'}
+            </h2>
             <button
               onClick={handleCancel}
               className="text-gray-500 hover:text-gray-700"
@@ -270,13 +321,15 @@ export default function AdminBusinessesPage() {
       )}
 
       {/* Businesses Table */}
-      <BusinessesTable
-        businesses={businesses}
-        onView={handleView}
-        onEdit={handleEdit}
-        onToggleActive={handleToggleActive}
-        showActions={true}
-      />
+      {!showForm && (
+        <BusinessesTable
+          businesses={businesses}
+          onView={handleView}
+          onEdit={canEdit ? handleEdit : undefined}
+          onToggleActive={canEdit ? handleToggleActive : undefined}
+          showActions={canEdit}
+        />
+      )}
 
       {/* Business Details Modal */}
       <BusinessDetailsModal

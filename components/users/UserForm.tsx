@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
+import PermissionSelector from './PermissionSelector';
+import { getDefaultPermissions } from '@/lib/permissions';
 
 interface User {
   id: string;
@@ -14,6 +16,7 @@ interface User {
 
 interface UserFormProps {
   user?: User | null;
+  initialPermissions?: string[];
   onSubmit: (data: UserFormData) => Promise<void>;
   onCancel: () => void;
   loading: boolean;
@@ -27,23 +30,39 @@ export interface UserFormData {
   password?: string;
   role: 'STAFF' | 'RIDER';
   active: boolean;
+  permissions: string[];
 }
 
 export default function UserForm({
   user,
+  initialPermissions,
   onSubmit,
   onCancel,
   loading,
   error,
 }: UserFormProps) {
+  const initialRole = (user?.role as 'STAFF' | 'RIDER') || 'STAFF';
+  
   const [formData, setFormData] = useState<UserFormData>({
     name: user?.name || '',
     email: user?.email || '',
     phone: user?.phone || '',
     password: '',
-    role: (user?.role as 'STAFF' | 'RIDER') || 'STAFF',
+    role: initialRole,
     active: user?.active ?? true,
+    permissions: initialPermissions || getDefaultPermissions(initialRole),
   });
+
+  // Update permissions when role changes (for new users)
+  const handleRoleChange = (newRole: 'STAFF' | 'RIDER') => {
+    setFormData(prev => ({
+      ...prev,
+      role: newRole,
+      // Reset to default permissions for the new role if this is a new user
+      // or if the user has no custom permissions yet
+      permissions: !user ? getDefaultPermissions(newRole) : prev.permissions,
+    }));
+  };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -51,100 +70,121 @@ export default function UserForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
         <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
           {error}
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Name *
-          </label>
-          <input
-            type="text"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            required
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Phone *
-          </label>
-          <input
-            type="tel"
-            value={formData.phone}
-            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-            required
-            placeholder="+255759561311"
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Email *
-          </label>
-          <input
-            type="email"
-            value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            required
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
-          />
-        </div>
-
-        {!user && (
+      {/* Basic Information Section */}
+      <div>
+        <h3 className="text-sm font-medium text-gray-900 mb-3">Basic Information</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Password *
+              Name *
             </label>
             <input
-              type="password"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              required={!user}
-              minLength={6}
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              required
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
             />
           </div>
-        )}
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Role *
-          </label>
-          <select
-            value={formData.role}
-            onChange={(e) => setFormData({ ...formData, role: e.target.value as 'STAFF' | 'RIDER' })}
-            required
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
-          >
-            <option value="STAFF">Staff</option>
-            <option value="RIDER">Rider</option>
-          </select>
-        </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Phone *
+            </label>
+            <input
+              type="tel"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              required
+              placeholder="+255759561311"
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
+            />
+          </div>
 
-        <div className="flex items-center gap-2 pt-6">
-          <input
-            type="checkbox"
-            id="active"
-            checked={formData.active}
-            onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
-            className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
-          />
-          <label htmlFor="active" className="text-sm font-medium text-gray-700">
-            Active
-          </label>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email *
+            </label>
+            <input
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              required
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
+            />
+          </div>
+
+          {!user && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Password *
+              </label>
+              <input
+                type="password"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                required={!user}
+                minLength={6}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Role *
+            </label>
+            <select
+              value={formData.role}
+              onChange={(e) => handleRoleChange(e.target.value as 'STAFF' | 'RIDER')}
+              required
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
+            >
+              <option value="STAFF">Staff</option>
+              <option value="RIDER">Rider</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2 pt-6">
+            <input
+              type="checkbox"
+              id="active"
+              checked={formData.active}
+              onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+              className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+            />
+            <label htmlFor="active" className="text-sm font-medium text-gray-700">
+              Active
+            </label>
+          </div>
         </div>
       </div>
 
-      <div className="flex gap-3 pt-4">
+      {/* Permissions Section */}
+      <div>
+        <h3 className="text-sm font-medium text-gray-900 mb-3">
+          Access Permissions
+          <span className="text-gray-500 font-normal ml-2">
+            (Configure what this user can see and do)
+          </span>
+        </h3>
+        <PermissionSelector
+          role={formData.role}
+          selectedPermissions={formData.permissions}
+          onChange={(permissions) => setFormData({ ...formData, permissions })}
+          disabled={loading}
+        />
+      </div>
+
+      {/* Form Actions */}
+      <div className="flex gap-3 pt-4 border-t border-gray-200">
         <button
           type="submit"
           disabled={loading}

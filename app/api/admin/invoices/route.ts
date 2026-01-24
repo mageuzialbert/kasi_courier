@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getAuthenticatedUser } from '@/lib/auth-server';
+import { requirePermission } from '@/lib/permissions-server';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,10 +31,19 @@ export async function POST(request: NextRequest) {
     // Check authentication and role
     const { user, role } = await getAuthenticatedUser(request);
     
-    if (!user || (role !== 'ADMIN' && role !== 'STAFF')) {
+    if (!user) {
       return NextResponse.json(
-        { error: 'Unauthorized. Admin or Staff access required.' },
+        { error: 'Unauthorized' },
         { status: 401 }
+      );
+    }
+
+    // Check permission for invoices.create
+    const { allowed, error: permError } = await requirePermission(user.id, role || '', 'invoices.create');
+    if (!allowed) {
+      return NextResponse.json(
+        { error: permError || 'Permission denied. Invoices create access required.' },
+        { status: 403 }
       );
     }
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser, supabaseAdmin } from '@/lib/auth-server';
+import { requirePermission } from '@/lib/permissions-server';
 
 // GET - List all deliveries with filters
 export async function GET(request: NextRequest) {
@@ -13,10 +14,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check if user is STAFF or ADMIN
-    if (role !== 'STAFF' && role !== 'ADMIN') {
+    // Check permission for deliveries.view
+    const { allowed, error: permError } = await requirePermission(user.id, role || '', 'deliveries.view');
+    if (!allowed) {
       return NextResponse.json(
-        { error: 'Forbidden' },
+        { error: permError || 'Permission denied' },
         { status: 403 }
       );
     }
@@ -99,10 +101,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user is STAFF or ADMIN
-    if (role !== 'STAFF' && role !== 'ADMIN') {
+    // Check permission for deliveries.create
+    const { allowed, error: permError } = await requirePermission(user.id, role || '', 'deliveries.create');
+    if (!allowed) {
       return NextResponse.json(
-        { error: 'Forbidden' },
+        { error: permError || 'Permission denied' },
         { status: 403 }
       );
     }

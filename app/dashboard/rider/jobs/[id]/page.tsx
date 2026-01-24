@@ -11,11 +11,15 @@ interface Delivery {
   id: string;
   business_id: string;
   pickup_address: string;
+  pickup_latitude: number | null;
+  pickup_longitude: number | null;
   pickup_name: string;
   pickup_phone: string;
   pickup_region_id: number | null;
   pickup_district_id: number | null;
   dropoff_address: string;
+  dropoff_latitude: number | null;
+  dropoff_longitude: number | null;
   dropoff_name: string;
   dropoff_phone: string;
   dropoff_region_id: number | null;

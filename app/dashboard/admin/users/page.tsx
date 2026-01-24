@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, X, Loader2 } from 'lucide-react';
 import { getUserRole } from '@/lib/roles';
+import { usePermissions } from '@/lib/permissions-context';
 import UsersTable from '@/components/users/UsersTable';
 import UserForm, { UserFormData } from '@/components/users/UserForm';
 
@@ -15,30 +16,37 @@ interface User {
   role: string;
   active: boolean;
   created_at: string;
+  permissions?: string[];
 }
 
 export default function AdminUsersPage() {
   const router = useRouter();
-  const [role, setRole] = useState<string | null>(null);
+  const { role: currentRole, hasPermission, hasModuleAccess, loading: permissionsLoading } = usePermissions();
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<User[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editingPermissions, setEditingPermissions] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [loadingPermissions, setLoadingPermissions] = useState(false);
+
+  // Check if user can access this page
+  const canAccess = currentRole === 'ADMIN' || hasModuleAccess('users');
+  const canCreate = currentRole === 'ADMIN' || hasPermission('users.create');
+  const canEdit = currentRole === 'ADMIN' || hasPermission('users.update');
+  const canDelete = currentRole === 'ADMIN' || hasPermission('users.delete');
 
   useEffect(() => {
-    async function checkRole() {
-      const userRole = await getUserRole();
-      if (userRole !== 'ADMIN') {
-        router.push('/dashboard/business');
-        return;
-      }
-      setRole(userRole);
-      loadUsers();
+    if (permissionsLoading) return;
+    
+    if (!canAccess) {
+      router.push('/dashboard/business');
+      return;
     }
-    checkRole();
-  }, [router]);
+    
+    loadUsers();
+  }, [canAccess, permissionsLoading, router]);
 
   async function loadUsers() {
     try {
@@ -51,6 +59,22 @@ export default function AdminUsersPage() {
       console.error('Error loading users:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadUserPermissions(userId: string) {
+    setLoadingPermissions(true);
+    try {
+      const response = await fetch(`/api/admin/users/${userId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setEditingPermissions(data.permissions || []);
+      }
+    } catch (error) {
+      console.error('Error loading user permissions:', error);
+      setEditingPermissions([]);
+    } finally {
+      setLoadingPermissions(false);
     }
   }
 
@@ -87,6 +111,7 @@ export default function AdminUsersPage() {
 
       setShowForm(false);
       setEditingUser(null);
+      setEditingPermissions([]);
       loadUsers();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save user');
@@ -114,12 +139,14 @@ export default function AdminUsersPage() {
     }
   }
 
-  function handleEdit(user: User) {
+  async function handleEdit(user: User) {
     setEditingUser(user);
     setShowForm(true);
+    // Load user permissions when editing
+    await loadUserPermissions(user.id);
   }
 
-  if (loading) {
+  if (loading || permissionsLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-12 h-12 animate-spin text-primary" />
@@ -134,11 +161,12 @@ export default function AdminUsersPage() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
-        {!showForm && (
+        {!showForm && canCreate && (
           <button
             onClick={() => {
               setShowForm(true);
               setEditingUser(null);
+              setEditingPermissions([]);
             }}
             className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors"
           >
@@ -158,6 +186,7 @@ export default function AdminUsersPage() {
               onClick={() => {
                 setShowForm(false);
                 setEditingUser(null);
+                setEditingPermissions([]);
                 setError('');
               }}
               className="text-gray-500 hover:text-gray-700"
@@ -165,25 +194,34 @@ export default function AdminUsersPage() {
               <X className="w-5 h-5" />
             </button>
           </div>
-          <UserForm
-            user={editingUser}
-            onSubmit={handleSubmit}
-            onCancel={() => {
-              setShowForm(false);
-              setEditingUser(null);
-              setError('');
-            }}
-            loading={submitting}
-            error={error}
-          />
+          {loadingPermissions ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <span className="ml-2 text-gray-600">Loading permissions...</span>
+            </div>
+          ) : (
+            <UserForm
+              user={editingUser}
+              initialPermissions={editingUser ? editingPermissions : undefined}
+              onSubmit={handleSubmit}
+              onCancel={() => {
+                setShowForm(false);
+                setEditingUser(null);
+                setEditingPermissions([]);
+                setError('');
+              }}
+              loading={submitting}
+              error={error}
+            />
+          )}
         </div>
       )}
 
       <UsersTable
         users={staffAndRiders}
-        onEdit={handleEdit}
-        onDeactivate={handleDeactivate}
-        showActions={true}
+        onEdit={canEdit ? handleEdit : undefined}
+        onDeactivate={canDelete ? handleDeactivate : undefined}
+        showActions={canEdit || canDelete}
       />
     </div>
   );

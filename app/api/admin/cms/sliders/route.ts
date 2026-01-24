@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getUserRole } from '@/lib/roles';
+import { getAuthenticatedUser } from '@/lib/auth-server';
+import { requirePermission } from '@/lib/permissions-server';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,11 +14,26 @@ const supabaseAdmin = createClient(
   }
 );
 
-// GET - List all sliders (admin only)
+// GET - List all sliders (admin/staff with permission)
 export async function GET(request: NextRequest) {
   try {
-    // Check if user is admin (this would need to be done via middleware or session check)
-    // For now, we'll rely on RLS policies
+    const { user, role } = await getAuthenticatedUser();
+    
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Check permission for cms_sliders.view
+    const { allowed, error: permError } = await requirePermission(user.id, role || '', 'cms_sliders.view');
+    if (!allowed) {
+      return NextResponse.json(
+        { error: permError || 'Permission denied' },
+        { status: 403 }
+      );
+    }
     
     const { data, error } = await supabaseAdmin
       .from('slider_images')
@@ -40,9 +56,27 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Create new slider (admin only)
+// POST - Create new slider (admin/staff with permission)
 export async function POST(request: NextRequest) {
   try {
+    const { user, role } = await getAuthenticatedUser();
+    
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Check permission for cms_sliders.create
+    const { allowed, error: permError } = await requirePermission(user.id, role || '', 'cms_sliders.create');
+    if (!allowed) {
+      return NextResponse.json(
+        { error: permError || 'Permission denied' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { image_url, caption, cta_text, cta_link, order_index, active } = body;
 

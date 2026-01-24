@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser, supabaseAdmin } from '@/lib/auth-server';
+import { saveUserPermissions } from '@/lib/permissions-server';
+import { getDefaultPermissions } from '@/lib/permissions';
 
 // GET - List all users with filters
 export async function GET(request: NextRequest) {
   try {
     const { user, role } = await getAuthenticatedUser();
 
-    if (!user || role !== 'ADMIN') {
+    if (!user) {
       return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
+        { error: 'Unauthorized' },
+        { status: 401 }
       );
     }
 
@@ -18,6 +20,22 @@ export async function GET(request: NextRequest) {
     const active = searchParams.get('active');
     const limit = parseInt(searchParams.get('limit') || '100');
     const offset = parseInt(searchParams.get('offset') || '0');
+
+    // STAFF can only query RIDER users (for assignment purposes)
+    // ADMIN can query all users
+    if (role === 'STAFF') {
+      if (userRole !== 'RIDER') {
+        return NextResponse.json(
+          { error: 'Staff can only query riders' },
+          { status: 403 }
+        );
+      }
+    } else if (role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
+      );
+    }
 
     let query = supabaseAdmin
       .from('users')
@@ -69,6 +87,7 @@ export async function POST(request: NextRequest) {
       email,
       password,
       role: userRole,
+      permissions,
     } = await request.json();
 
     // Validation
@@ -159,6 +178,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Save user permissions
+    const userPermissions = permissions && Array.isArray(permissions) 
+      ? permissions 
+      : getDefaultPermissions(userRole);
+    
+    const { success: permissionsSuccess, error: permissionsError } = await saveUserPermissions(
+      authData.user.id,
+      userPermissions,
+      userRole
+    );
+
+    if (!permissionsSuccess) {
+      console.error('Error saving permissions:', permissionsError);
+      // Don't fail the whole request, just log the error
+      // Permissions can be updated later
+    }
+
     return NextResponse.json({
       success: true,
       user: {
@@ -168,6 +204,7 @@ export async function POST(request: NextRequest) {
         phone: phoneNumber,
         role: userRole,
         active: true,
+        permissions: userPermissions,
       },
     });
   } catch (error) {

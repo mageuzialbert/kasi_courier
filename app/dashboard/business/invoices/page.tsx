@@ -24,6 +24,15 @@ interface InvoiceItem {
   delivery_id: string | null;
   amount: number;
   description: string | null;
+  deliveries?: {
+    pickup_name: string;
+    pickup_address: string;
+    dropoff_name: string;
+    dropoff_address: string;
+    package_description: string | null;
+    pickup_district?: { name: string } | null;
+    dropoff_district?: { name: string } | null;
+  } | null;
 }
 
 interface CompanyProfile {
@@ -143,10 +152,21 @@ export default function BusinessInvoicesPage() {
         setBusiness(businessData);
       }
 
-      // Load invoice items
+      // Load invoice items with delivery details
       const { data: items, error: itemsError } = await supabase
         .from('invoice_items')
-        .select('*')
+        .select(`
+          *,
+          deliveries (
+            pickup_name,
+            pickup_address,
+            dropoff_name,
+            dropoff_address,
+            package_description,
+            pickup_district:pickup_district_id (name),
+            dropoff_district:dropoff_district_id (name)
+          )
+        `)
         .eq('invoice_id', invoice.id)
         .order('created_at', { ascending: true });
 

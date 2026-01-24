@@ -1,5 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser, supabaseAdmin } from '@/lib/auth-server';
+import { saveUserPermissions, getUserPermissionsServer } from '@/lib/permissions-server';
+
+// GET - Get single user with permissions
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { user, role } = await getAuthenticatedUser();
+
+    if (!user || role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
+      );
+    }
+
+    // Fetch user
+    const { data: userData, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('*')
+      .eq('id', params.id)
+      .single();
+
+    if (userError || !userData) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    // Fetch user permissions
+    const permissions = await getUserPermissionsServer(params.id);
+
+    return NextResponse.json({
+      ...userData,
+      permissions,
+    });
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
 
 // PUT - Update user
 export async function PUT(
@@ -22,6 +68,7 @@ export async function PUT(
       email,
       role: userRole,
       active,
+      permissions,
     } = await request.json();
 
     // Verify user exists
@@ -85,9 +132,32 @@ export async function PUT(
       });
     }
 
+    // Update permissions if provided
+    let savedPermissions: string[] = [];
+    if (permissions !== undefined && Array.isArray(permissions)) {
+      const finalRole = userRole || existingUser.role;
+      if (finalRole === 'STAFF' || finalRole === 'RIDER') {
+        const { success, error: permError } = await saveUserPermissions(
+          params.id,
+          permissions,
+          finalRole as 'STAFF' | 'RIDER'
+        );
+        if (!success) {
+          console.error('Error updating permissions:', permError);
+        }
+        savedPermissions = permissions;
+      }
+    } else {
+      // Fetch existing permissions to return
+      savedPermissions = await getUserPermissionsServer(params.id);
+    }
+
     return NextResponse.json({
       success: true,
-      user: updatedUser,
+      user: {
+        ...updatedUser,
+        permissions: savedPermissions,
+      },
     });
   } catch (error) {
     console.error('Error updating user:', error);

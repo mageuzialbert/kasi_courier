@@ -25,6 +25,15 @@ interface InvoiceItem {
   id: string;
   description: string | null;
   amount: number;
+  deliveries?: {
+    pickup_name: string;
+    pickup_address: string;
+    dropoff_name: string;
+    dropoff_address: string;
+    package_description: string | null;
+    pickup_district?: { name: string } | null;
+    dropoff_district?: { name: string } | null;
+  } | null;
 }
 
 interface Invoice {
@@ -212,16 +221,55 @@ export default function InvoiceDocument({
                 </td>
               </tr>
             ) : (
-              invoiceItems.map((item, index) => (
-                <tr key={item.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    {item.description || 'Delivery Service'}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900 text-right font-medium">
-                    TZS {item.amount.toLocaleString()}
-                  </td>
-                </tr>
-              ))
+              invoiceItems.map((item, index) => {
+                const delivery = item.deliveries;
+                const pickupLocation = delivery?.pickup_district?.name || '';
+                const dropoffLocation = delivery?.dropoff_district?.name || '';
+                
+                return (
+                  <tr key={item.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      <div className="space-y-1">
+                        {/* Main description */}
+                        <div className="font-medium">
+                          {item.description || 'Delivery Service'}
+                        </div>
+                        
+                        {/* Pickup and Dropoff details */}
+                        {delivery && (
+                          <div className="text-xs text-gray-600 space-y-0.5">
+                            <div className="flex items-center gap-1">
+                              <span className="font-medium text-gray-700">From:</span>
+                              <span>
+                                {delivery.pickup_name}
+                                {pickupLocation && ` (${pickupLocation})`}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="font-medium text-gray-700">To:</span>
+                              <span>
+                                {delivery.dropoff_name}
+                                {dropoffLocation && ` (${dropoffLocation})`}
+                              </span>
+                            </div>
+                            
+                            {/* Package description / Special instructions */}
+                            {delivery.package_description && (
+                              <div className="flex items-start gap-1 mt-1 pt-1 border-t border-gray-200">
+                                <span className="font-medium text-gray-700">Items:</span>
+                                <span className="text-gray-600">{delivery.package_description}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900 text-right font-medium align-top">
+                      TZS {item.amount.toLocaleString()}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
           <tfoot className="bg-gray-100 border-t-2 border-gray-300">
