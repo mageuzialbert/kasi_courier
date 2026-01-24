@@ -1,15 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import PhoneVerification from '@/components/quick-order/PhoneVerification';
 import DeliveryForm, { DeliveryFormData } from '@/components/quick-order/DeliveryForm';
 import OrderProgress from '@/components/quick-order/OrderProgress';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, Loader2 } from 'lucide-react';
 
 type Step = 'phone' | 'delivery' | 'complete';
+
+interface Region {
+  id: number;
+  name: string;
+}
+
+interface District {
+  id: number;
+  name: string;
+  region_id: number;
+}
 
 export default function QuickOrderPage() {
   const router = useRouter();
@@ -24,7 +35,54 @@ export default function QuickOrderPage() {
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [isNewUser, setIsNewUser] = useState(false);
   const [businessName, setBusinessName] = useState('');
-  const [districtId, setDistrictId] = useState<number | null>(null);
+  const [selectedRegionId, setSelectedRegionId] = useState<number | null>(null);
+  const [selectedDistrictId, setSelectedDistrictId] = useState<number | null>(null);
+  
+  // Location data
+  const [regions, setRegions] = useState<Region[]>([]);
+  const [districts, setDistricts] = useState<District[]>([]);
+  const [loadingLocations, setLoadingLocations] = useState(false);
+
+  // Load regions on mount
+  useEffect(() => {
+    const loadRegions = async () => {
+      try {
+        const response = await fetch('/api/regions');
+        if (response.ok) {
+          const data = await response.json();
+          setRegions(data);
+        }
+      } catch (err) {
+        console.error('Error loading regions:', err);
+      }
+    };
+    loadRegions();
+  }, []);
+
+  // Load districts when region changes
+  useEffect(() => {
+    const loadDistricts = async () => {
+      if (!selectedRegionId) {
+        setDistricts([]);
+        setSelectedDistrictId(null);
+        return;
+      }
+      
+      setLoadingLocations(true);
+      try {
+        const response = await fetch(`/api/districts?region_id=${selectedRegionId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setDistricts(data);
+        }
+      } catch (err) {
+        console.error('Error loading districts:', err);
+      } finally {
+        setLoadingLocations(false);
+      }
+    };
+    loadDistricts();
+  }, [selectedRegionId]);
 
   const handlePhoneSubmit = async () => {
     setError('');
@@ -88,6 +146,12 @@ export default function QuickOrderPage() {
   };
 
   const handleOTPVerify = async (code: string) => {
+    // Validate business name for new users before verification
+    if (isNewUser && !businessName.trim()) {
+      setError('Please enter your business name to continue');
+      return;
+    }
+
     setError('');
     setLoading(true);
 
@@ -98,8 +162,8 @@ export default function QuickOrderPage() {
         body: JSON.stringify({
           phone,
           code,
-          businessName: isNewUser ? businessName : undefined,
-          districtId: isNewUser ? districtId : undefined,
+          businessName: isNewUser ? businessName.trim() : undefined,
+          districtId: isNewUser ? selectedDistrictId : undefined,
         }),
       });
 
@@ -111,14 +175,35 @@ export default function QuickOrderPage() {
 
       // Set session tokens
       if (data.accessToken && data.refreshToken) {
-        const { error: sessionError } = await supabase.auth.setSession({
+        const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
           access_token: data.accessToken,
           refresh_token: data.refreshToken,
         });
 
         if (sessionError) {
+          console.error('Session error:', sessionError);
           throw new Error('Failed to create session');
         }
+
+        // Wait a moment for session to be set
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        // Verify session was created by checking multiple times
+        let user = null;
+        for (let i = 0; i < 5; i++) {
+          const { data: { user: currentUser } } = await supabase.auth.getUser();
+          if (currentUser) {
+            user = currentUser;
+            break;
+          }
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+
+        if (!user) {
+          throw new Error('Session was not created. Please try again.');
+        }
+      } else {
+        throw new Error('No session tokens received');
       }
 
       setUserId(data.userId);
@@ -171,6 +256,9 @@ export default function QuickOrderPage() {
     return 3;
   };
 
+  // Check if verify button should be disabled for new users
+  const canVerify = !isNewUser || (businessName.trim().length > 0);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navigation */}
@@ -202,55 +290,184 @@ export default function QuickOrderPage() {
           <OrderProgress currentStep={getCurrentStep()} />
 
           {step === 'phone' && (
-            <div>
-              {isNewUser && (
-                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-sm text-blue-800 mb-4">
-                    This phone number is not registered. We&apos;ll create your business account after verification.
-                  </p>
-                  <div className="space-y-3">
+            <div className="space-y-6">
+              {/* Phone input section */}
+              {!otpSent ? (
+                <form onSubmit={(e) => { e.preventDefault(); handlePhoneSubmit(); }} className="space-y-4">
+                  <div>
+                    <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+                      Phone Number
+                    </label>
+                    <input
+                      type="tel"
+                      id="phone"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="+255759561311"
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-lg"
+                      disabled={loading}
+                    />
+                    <p className="mt-1 text-sm text-gray-500">
+                      Enter your phone number to continue
+                    </p>
+                  </div>
+
+                  {error && (
+                    <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+                      {error}
+                    </div>
+                  )}
+
+                  {success && (
+                    <div className="p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm">
+                      {success}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={loading || !phone}
+                    className="w-full bg-primary text-white font-semibold py-3 rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span>Sending code...</span>
+                      </>
+                    ) : (
+                      'Send Verification Code'
+                    )}
+                  </button>
+                </form>
+              ) : (
+                <div className="space-y-6">
+                  {/* New User Registration Form - shown when OTP is sent for new users */}
+                  {isNewUser && (
+                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-sm text-blue-800 mb-4">
+                        This phone number is not registered. Please provide your business details to create an account.
+                      </p>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Business Name <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={businessName}
+                            onChange={(e) => setBusinessName(e.target.value)}
+                            placeholder="Enter your business name"
+                            required
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Region
+                          </label>
+                          <select
+                            value={selectedRegionId || ''}
+                            onChange={(e) => setSelectedRegionId(e.target.value ? Number(e.target.value) : null)}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                          >
+                            <option value="">Select a region (optional)</option>
+                            {regions.map((region) => (
+                              <option key={region.id} value={region.id}>
+                                {region.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        
+                        {selectedRegionId && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              District
+                            </label>
+                            <select
+                              value={selectedDistrictId || ''}
+                              onChange={(e) => setSelectedDistrictId(e.target.value ? Number(e.target.value) : null)}
+                              disabled={loadingLocations}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50"
+                            >
+                              <option value="">Select a district (optional)</option>
+                              {districts.map((district) => (
+                                <option key={district.id} value={district.id}>
+                                  {district.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* OTP Verification Form */}
+                  <form onSubmit={(e) => { e.preventDefault(); handleOTPVerify(otpCode); }} className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Business Name *
+                      <label htmlFor="otp" className="block text-sm font-medium text-gray-700 mb-2">
+                        Verification Code
                       </label>
                       <input
                         type="text"
-                        value={businessName}
-                        onChange={(e) => setBusinessName(e.target.value)}
+                        id="otp"
+                        value={otpCode}
+                        onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="123456"
                         required
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                        disabled={otpSent}
+                        maxLength={6}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-lg text-center tracking-widest"
+                        disabled={loading}
                       />
+                      <p className="mt-1 text-sm text-gray-500">
+                        Enter the 6-digit code sent to {phone}
+                      </p>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        District (Optional)
-                      </label>
-                      <input
-                        type="number"
-                        value={districtId || ''}
-                        onChange={(e) => setDistrictId(e.target.value ? Number(e.target.value) : null)}
-                        placeholder="District ID"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                        disabled={otpSent}
-                      />
-                    </div>
-                  </div>
+
+                    {error && (
+                      <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+                        {error}
+                      </div>
+                    )}
+
+                    {success && (
+                      <div className="p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm">
+                        {success}
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={loading || otpCode.length !== 6 || !canVerify}
+                      className="w-full bg-primary text-white font-semibold py-3 rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <span>Verifying...</span>
+                        </>
+                      ) : (
+                        'Verify Code'
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOtpCode('');
+                        handlePhoneSubmit();
+                      }}
+                      className="w-full text-gray-600 hover:text-gray-900 text-sm"
+                      disabled={loading}
+                    >
+                      Resend code
+                    </button>
+                  </form>
                 </div>
               )}
-
-              <PhoneVerification
-                phone={phone}
-                setPhone={setPhone}
-                onPhoneSubmit={handlePhoneSubmit}
-                onOTPVerify={handleOTPVerify}
-                loading={loading}
-                otpSent={otpSent}
-                otpCode={otpCode}
-                setOtpCode={setOtpCode}
-                error={error}
-                success={success}
-              />
             </div>
           )}
 
@@ -272,12 +489,15 @@ export default function QuickOrderPage() {
                 Your delivery request has been submitted. Our team will process it shortly.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link
-                  href="/dashboard/business/deliveries"
+                <button
+                  onClick={() => {
+                    router.push('/dashboard/business/deliveries');
+                    router.refresh();
+                  }}
                   className="bg-primary text-white font-semibold px-6 py-3 rounded-lg hover:bg-primary-dark transition-colors"
                 >
                   View My Deliveries
-                </Link>
+                </button>
                 <Link
                   href="/"
                   className="bg-gray-200 text-gray-700 font-semibold px-6 py-3 rounded-lg hover:bg-gray-300 transition-colors"

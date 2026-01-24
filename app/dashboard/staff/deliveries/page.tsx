@@ -191,6 +191,7 @@ export default function StaffDeliveriesPage() {
         onAssignRider={handleAssignClick}
         showBusiness={true}
         showActions={true}
+        basePath="/dashboard/staff/deliveries"
       />
 
       <RiderAssignmentModal

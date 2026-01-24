@@ -79,11 +79,11 @@ export async function POST(request: NextRequest) {
       // Generate email from phone (for Supabase auth requirement)
       email = `${phoneNumber.replace(/\+/g, '')}@kasicourier.local`;
 
-      // Create auth user
+      // Create auth user - email_confirm: false so placeholder email is not verified
       const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email,
         password: Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12), // Random password
-        email_confirm: true,
+        email_confirm: false, // Don't verify placeholder email - user should provide real email later
         user_metadata: {
           business_name: businessName,
           phone: phoneNumber,
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
 
       userId = authData.user.id;
 
-      // Create user record
+      // Create user record with phone verified, email NOT verified (placeholder email)
       const { error: userError } = await supabaseAdmin
         .from('users')
         .upsert({
@@ -110,6 +110,8 @@ export async function POST(request: NextRequest) {
           phone: phoneNumber,
           role: 'BUSINESS',
           active: true,
+          phone_verified: true, // Phone was verified via OTP
+          email_verified: false, // Placeholder email should not be verified
         }, {
           onConflict: 'id'
         });
@@ -147,9 +149,15 @@ export async function POST(request: NextRequest) {
 
       businessId = businessData.id;
     } else if (existingUser) {
-      // User exists - just verify and return session
+      // User exists - verify and update phone_verified status
       userId = existingUser.id;
       email = existingUser.email || `${phoneNumber.replace(/\+/g, '')}@kasicourier.local`;
+
+      // Mark phone as verified for existing user
+      await supabaseAdmin
+        .from('users')
+        .update({ phone_verified: true })
+        .eq('id', userId);
 
       // Get business ID if user is a business
       if (existingUser.role === 'BUSINESS') {
@@ -168,28 +176,51 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate session tokens
-    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'magiclink',
-      email: email,
-    });
-
-    if (linkError || !linkData) {
+    // Create a session using temporary password method
+    const tempPassword = Math.random().toString(36).slice(-16) + Math.random().toString(36).slice(-16) + 'A1!';
+    
+    // Update user with temp password and confirm email (required for signInWithPassword)
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+      userId,
+      { 
+        password: tempPassword,
+        email_confirm: true // Confirm email to allow sign-in
+      }
+    );
+    
+    if (updateError) {
+      console.error('Error updating user for session:', updateError);
       return NextResponse.json(
         { error: 'Failed to create session' },
         { status: 500 }
       );
     }
-
-    // Extract tokens - TypeScript types don't include these but they may exist at runtime
-    const properties = linkData.properties as any;
+    
+    // Sign in with the temporary password to get session tokens
+    const supabasePublic = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    
+    const { data: authData, error: signInError } = await supabasePublic.auth.signInWithPassword({
+      email: email,
+      password: tempPassword,
+    });
+    
+    if (signInError || !authData?.session) {
+      console.error('Error signing in for session:', signInError);
+      return NextResponse.json(
+        { error: 'Failed to create session' },
+        { status: 500 }
+      );
+    }
     
     return NextResponse.json({
       success: true,
       userId,
       businessId,
-      accessToken: properties?.access_token,
-      refreshToken: properties?.refresh_token,
+      accessToken: authData.session.access_token,
+      refreshToken: authData.session.refresh_token,
     });
   } catch (error) {
     console.error('Error in quick verify OTP:', error);

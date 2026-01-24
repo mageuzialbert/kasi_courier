@@ -10,12 +10,14 @@
     "setup-db": "node scripts/run-sql.js"
   },
   "dependencies": {
+    "@react-google-maps/api": "^2.20.8",
     "@supabase/ssr": "^0.5.1",
     "@supabase/supabase-js": "^2.45.4",
     "lucide-react": "^0.562.0",
     "next": "^14.2.5",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "use-places-autocomplete": "^4.0.1"
   },
   "devDependencies": {
     "@types/node": "^20.14.12",

@@ -140,13 +140,18 @@ export async function POST(request: NextRequest) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const tempPassword = Math.random().toString(36).slice(-16) + Math.random().toString(36).slice(-16) + 'A1!';
     
-    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+    // First, ensure email is confirmed (required for signInWithPassword)
+    // This is needed for users created via quick-order with unconfirmed placeholder emails
+    const { error: confirmError } = await supabaseAdmin.auth.admin.updateUserById(
       authUser.id,
-      { password: tempPassword }
+      { 
+        password: tempPassword,
+        email_confirm: true // Confirm email to allow sign-in
+      }
     );
     
-    if (updateError) {
-      console.error('Error updating password:', updateError);
+    if (confirmError) {
+      console.error('Error updating user:', confirmError);
       return NextResponse.json(
         { error: 'Failed to create session' },
         { status: 500 }

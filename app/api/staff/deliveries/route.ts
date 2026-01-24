@@ -119,6 +119,10 @@ export async function POST(request: NextRequest) {
       dropoff_phone,
       dropoff_region_id,
       dropoff_district_id,
+      pickup_latitude,
+      pickup_longitude,
+      dropoff_latitude,
+      dropoff_longitude,
       package_description,
     } = await request.json();
 
@@ -157,11 +161,15 @@ export async function POST(request: NextRequest) {
       .insert({
         business_id,
         pickup_address,
+        pickup_latitude,
+        pickup_longitude,
         pickup_name,
         pickup_phone,
         pickup_region_id: pickup_region_id || null,
         pickup_district_id: pickup_district_id || null,
         dropoff_address,
+        dropoff_latitude,
+        dropoff_longitude,
         dropoff_name,
         dropoff_phone,
         dropoff_region_id: dropoff_region_id || null,

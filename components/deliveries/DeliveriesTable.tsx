@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Package, User, MapPin, Calendar, Filter } from 'lucide-react';
+import Link from 'next/link';
+import { Package, User, MapPin, Calendar, Filter, Eye } from 'lucide-react';
 
 interface Delivery {
   id: string;
@@ -34,6 +35,7 @@ interface DeliveriesTableProps {
   onAssignRider?: (deliveryId: string) => void;
   showBusiness?: boolean;
   showActions?: boolean;
+  basePath?: string;
 }
 
 const statusColors: Record<string, string> = {
@@ -50,6 +52,7 @@ export default function DeliveriesTable({
   onAssignRider,
   showBusiness = false,
   showActions = true,
+  basePath = '/dashboard/business/deliveries',
 }: DeliveriesTableProps) {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
 
@@ -185,14 +188,24 @@ export default function DeliveriesTable({
                     </td>
                     {showActions && (
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        {!delivery.assigned_rider_id && onAssignRider && (
-                          <button
-                            onClick={() => onAssignRider(delivery.id)}
-                            className="text-primary hover:text-primary-dark"
+                        <div className="flex items-center gap-3">
+                          <Link
+                             href={`${basePath}/${delivery.id}`}
+                             className="text-gray-600 hover:text-primary flex items-center gap-1"
+                             title="View Details"
                           >
-                            Assign Rider
-                          </button>
-                        )}
+                            <Eye className="w-4 h-4" />
+                            <span className="sr-only">View</span>
+                          </Link>
+                          {!delivery.assigned_rider_id && onAssignRider && (
+                            <button
+                              onClick={() => onAssignRider(delivery.id)}
+                              className="text-primary hover:text-primary-dark"
+                            >
+                              Assign Rider
+                            </button>
+                          )}
+                        </div>
                       </td>
                     )}
                   </tr>

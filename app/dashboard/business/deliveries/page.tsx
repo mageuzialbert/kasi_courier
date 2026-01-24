@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { X, Plus, Loader2, Filter } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import DeliveryForm, { DeliveryFormData } from '@/components/deliveries/DeliveryForm';
 
 interface Delivery {
   id: string;
@@ -47,15 +48,6 @@ function BusinessDeliveriesContent() {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [formData, setFormData] = useState({
-    pickup_address: '',
-    pickup_name: '',
-    pickup_phone: '',
-    dropoff_address: '',
-    dropoff_name: '',
-    dropoff_phone: '',
-    package_description: '',
-  });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -107,8 +99,7 @@ function BusinessDeliveriesContent() {
     }
   }, [statusFilter, deliveries]);
 
-  async function handleCreateDelivery(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleCreateDelivery(formData: DeliveryFormData) {
     setError('');
     setSubmitting(true);
 
@@ -131,11 +122,19 @@ function BusinessDeliveriesContent() {
         .insert({
           business_id: business.id,
           pickup_address: formData.pickup_address,
+          pickup_latitude: formData.pickup_latitude,
+          pickup_longitude: formData.pickup_longitude,
           pickup_name: formData.pickup_name,
           pickup_phone: formData.pickup_phone,
+          pickup_region_id: formData.pickup_region_id,
+          pickup_district_id: formData.pickup_district_id,
           dropoff_address: formData.dropoff_address,
+          dropoff_latitude: formData.dropoff_latitude,
+          dropoff_longitude: formData.dropoff_longitude,
           dropoff_name: formData.dropoff_name,
           dropoff_phone: formData.dropoff_phone,
+          dropoff_region_id: formData.dropoff_region_id,
+          dropoff_district_id: formData.dropoff_district_id,
           package_description: formData.package_description || null,
           status: 'CREATED',
           created_by: user.id,
@@ -143,16 +142,6 @@ function BusinessDeliveriesContent() {
 
       if (createError) throw createError;
 
-      // Reset form and reload
-      setFormData({
-        pickup_address: '',
-        pickup_name: '',
-        pickup_phone: '',
-        dropoff_address: '',
-        dropoff_name: '',
-        dropoff_phone: '',
-        package_description: '',
-      });
       setShowCreateForm(false);
       loadDeliveries();
     } catch (err) {
@@ -177,7 +166,7 @@ function BusinessDeliveriesContent() {
         {!showCreateForm && (
           <button
             onClick={() => setShowCreateForm(true)}
-            className="flex items-center space-x-2 bg-primary text-white px-6 py-2 rounded-md hover:bg-primary-dark transition-colors font-medium"
+            className="flex items-center space-x-2 bg-primary text-white px-6 py-2.5 rounded-lg hover:bg-primary-dark transition-colors font-medium shadow-sm"
           >
             <Plus className="w-5 h-5" />
             <span>Create Delivery</span>
@@ -185,127 +174,30 @@ function BusinessDeliveriesContent() {
         )}
       </div>
 
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
-          {error}
-        </div>
-      )}
-
       {/* Create Delivery Form */}
       {showCreateForm && (
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">Create New Delivery</h2>
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-100">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">Create New Delivery</h2>
             <button
-              onClick={() => setShowCreateForm(false)}
-              className="text-gray-500 hover:text-gray-700 p-1"
+              onClick={() => {
+                setShowCreateForm(false);
+                setError('');
+              }}
+              className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              <X className="w-5 h-5" />
+              <X className="w-6 h-6" />
             </button>
           </div>
-          <form onSubmit={handleCreateDelivery} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Pickup Address
-                </label>
-                <input
-                  type="text"
-                  value={formData.pickup_address}
-                  onChange={(e) => setFormData({ ...formData, pickup_address: e.target.value })}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Pickup Name
-                </label>
-                <input
-                  type="text"
-                  value={formData.pickup_name}
-                  onChange={(e) => setFormData({ ...formData, pickup_name: e.target.value })}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Pickup Phone
-                </label>
-                <input
-                  type="tel"
-                  value={formData.pickup_phone}
-                  onChange={(e) => setFormData({ ...formData, pickup_phone: e.target.value })}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Drop-off Address
-                </label>
-                <input
-                  type="text"
-                  value={formData.dropoff_address}
-                  onChange={(e) => setFormData({ ...formData, dropoff_address: e.target.value })}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Drop-off Name
-                </label>
-                <input
-                  type="text"
-                  value={formData.dropoff_name}
-                  onChange={(e) => setFormData({ ...formData, dropoff_name: e.target.value })}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Drop-off Phone
-                </label>
-                <input
-                  type="tel"
-                  value={formData.dropoff_phone}
-                  onChange={(e) => setFormData({ ...formData, dropoff_phone: e.target.value })}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Package Description (Optional)
-              </label>
-              <textarea
-                value={formData.package_description}
-                onChange={(e) => setFormData({ ...formData, package_description: e.target.value })}
-                rows={3}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
-              />
-            </div>
-            <div className="flex gap-3">
-              <button
-                type="submit"
-                disabled={submitting}
-                className="bg-primary text-white px-6 py-2 rounded-md hover:bg-primary-dark transition-colors disabled:opacity-50 font-medium"
-              >
-                {submitting ? 'Creating...' : 'Create Delivery'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowCreateForm(false)}
-                className="bg-gray-200 text-gray-700 px-6 py-2 rounded-md hover:bg-gray-300 transition-colors font-medium"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
+          <DeliveryForm
+            onSubmit={handleCreateDelivery}
+            onCancel={() => {
+              setShowCreateForm(false);
+              setError('');
+            }}
+            loading={submitting}
+            error={error}
+          />
         </div>
       )}
 

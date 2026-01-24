@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { CheckCircle, XCircle, Loader2, Send, Mail, Phone } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, Send, Mail, Phone, Pencil } from 'lucide-react';
 import Link from 'next/link';
 
 export default function BusinessVerifyPage() {
@@ -24,6 +24,8 @@ export default function BusinessVerifyPage() {
   const [emailSending, setEmailSending] = useState(false);
   const [emailError, setEmailError] = useState('');
   const [emailSuccess, setEmailSuccess] = useState('');
+  const [emailEditing, setEmailEditing] = useState(false);
+  const [originalEmail, setOriginalEmail] = useState('');
 
   useEffect(() => {
     loadVerificationStatus();
@@ -198,6 +200,28 @@ export default function BusinessVerifyPage() {
     setEmailSending(true);
 
     try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Not authenticated');
+      }
+
+      // If email was changed, update it first via API
+      const currentAuthEmail = user.email || '';
+      if (email !== currentAuthEmail) {
+        const updateResponse = await fetch('/api/auth/update-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id, newEmail: email }),
+        });
+
+        if (!updateResponse.ok) {
+          const errorData = await updateResponse.json();
+          throw new Error(errorData.error || 'Failed to update email');
+        }
+      }
+
+      // Send verification email using the updated email
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email: email,
@@ -383,7 +407,7 @@ export default function BusinessVerifyPage() {
               <Mail className="w-6 h-6 text-gray-700" />
               <h2 className="text-xl font-semibold text-gray-900">Email Verification</h2>
             </div>
-            {emailVerified ? (
+            {emailVerified && !emailEditing ? (
               <div className="flex items-center space-x-2 text-green-600">
                 <CheckCircle className="w-5 h-5" />
                 <span className="font-medium">Verified</span>
@@ -397,23 +421,79 @@ export default function BusinessVerifyPage() {
           </div>
 
           <div className="space-y-4">
+            {((!emailVerified && email.endsWith('@kasicourier.local')) || emailEditing) && (
+              <div className="p-3 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-md text-sm">
+                {emailEditing 
+                  ? 'Changing your email will require re-verification.'
+                  : "You're using a placeholder email. Please enter your real email address to receive important updates."
+                }
+              </div>
+            )}
+            
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Email Address
               </label>
-              <input
-                type="email"
-                value={email}
-                disabled
-                className="w-full px-4 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500"
-              />
+              <div className="flex gap-2">
+                {emailVerified && !emailEditing ? (
+                  <>
+                    <input
+                      type="email"
+                      value={email}
+                      disabled
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500"
+                    />
+                    <button
+                      onClick={() => {
+                        setOriginalEmail(email);
+                        setEmailEditing(true);
+                        setEmailError('');
+                        setEmailSuccess('');
+                      }}
+                      className="flex items-center space-x-2 bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors font-medium"
+                    >
+                      <Pencil className="w-4 h-4" />
+                      <span>Edit</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Enter your email address"
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
+                    />
+                    {emailEditing && (
+                      <button
+                        onClick={() => {
+                          setEmail(originalEmail);
+                          setEmailEditing(false);
+                          setEmailError('');
+                          setEmailSuccess('');
+                        }}
+                        className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors font-medium"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
 
-            {!emailVerified && (
+            {(!emailVerified || emailEditing) && (
               <>
                 <button
-                  onClick={handleSendEmailVerification}
-                  disabled={emailSending}
+                  onClick={async () => {
+                    await handleSendEmailVerification();
+                    if (!emailError) {
+                      setEmailEditing(false);
+                      setEmailVerified(false);
+                    }
+                  }}
+                  disabled={emailSending || !email || email.endsWith('@kasicourier.local')}
                   className="flex items-center space-x-2 bg-primary text-white px-6 py-2 rounded-md hover:bg-primary-dark transition-colors disabled:opacity-50 font-medium"
                 >
                   {emailSending ? (
@@ -424,7 +504,7 @@ export default function BusinessVerifyPage() {
                   ) : (
                     <>
                       <Send className="w-5 h-5" />
-                      <span>Send Verification Email</span>
+                      <span>{emailEditing ? 'Update & Verify Email' : 'Send Verification Email'}</span>
                     </>
                   )}
                 </button>
