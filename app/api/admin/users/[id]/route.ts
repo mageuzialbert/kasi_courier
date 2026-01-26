@@ -66,6 +66,7 @@ export async function PUT(
       name,
       phone,
       email,
+      password,
       role: userRole,
       active,
       permissions,
@@ -125,11 +126,26 @@ export async function PUT(
       );
     }
 
-    // Update auth user if email changed
+    // Update auth user if email or password changed
+    const authUpdates: { email?: string; password?: string } = {};
+    
     if (email && email !== existingUser.email) {
-      await supabaseAdmin.auth.admin.updateUserById(params.id, {
-        email,
-      });
+      authUpdates.email = email;
+    }
+    
+    if (password && password.trim().length >= 6) {
+      authUpdates.password = password;
+    }
+    
+    if (Object.keys(authUpdates).length > 0) {
+      const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(params.id, authUpdates);
+      if (authError) {
+        console.error('Error updating auth user:', authError);
+        return NextResponse.json(
+          { error: `Failed to update credentials: ${authError.message}` },
+          { status: 500 }
+        );
+      }
     }
 
     // Update permissions if provided

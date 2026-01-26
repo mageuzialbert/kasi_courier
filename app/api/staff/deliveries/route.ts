@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser, supabaseAdmin } from '@/lib/auth-server';
 import { requirePermission } from '@/lib/permissions-server';
+import { sendSMS } from '@/lib/sms';
+
+const COMPANY_PROFILE_ID = '00000000-0000-0000-0000-000000000001';
 
 // GET - List all deliveries with filters
 export async function GET(request: NextRequest) {
@@ -158,6 +161,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Determine status and assignment based on creator's role
+    // Riders create deliveries with PENDING_CONFIRMATION and auto-assign to themselves
+    const isRider = role === 'RIDER';
+    const deliveryStatus = isRider ? 'PENDING_CONFIRMATION' : 'CREATED';
+    const assignedRiderId = isRider ? user.id : null;
+
     // Create delivery
     const { data: deliveryData, error: deliveryError } = await supabaseAdmin
       .from('deliveries')
@@ -178,7 +187,8 @@ export async function POST(request: NextRequest) {
         dropoff_region_id: dropoff_region_id || null,
         dropoff_district_id: dropoff_district_id || null,
         package_description: package_description || null,
-        status: 'CREATED',
+        status: deliveryStatus,
+        assigned_rider_id: assignedRiderId,
         created_by: user.id,
       })
       .select()
@@ -192,14 +202,40 @@ export async function POST(request: NextRequest) {
     }
 
     // Create delivery event
+    const eventNote = isRider 
+      ? 'Delivery created by rider - pending confirmation' 
+      : 'Delivery created by staff';
+    
     await supabaseAdmin
       .from('delivery_events')
       .insert({
         delivery_id: deliveryData.id,
-        status: 'CREATED',
-        note: 'Delivery created by staff',
+        status: deliveryStatus,
+        note: eventNote,
         created_by: user.id,
       });
+
+    // When rider creates and self-assigns, notify company profile so they can confirm
+    if (isRider) {
+      try {
+        const { data: companyProfile } = await supabaseAdmin
+          .from('company_profile')
+          .select('phone')
+          .eq('id', COMPANY_PROFILE_ID)
+          .single();
+
+        if (companyProfile?.phone) {
+          const shortId = deliveryData.id.substring(0, 8);
+          await sendSMS(
+            companyProfile.phone,
+            `Kasi Courier: A rider has created and self-assigned delivery ${shortId}. Status: Pending confirmation. Please confirm in Staff Dashboard.`
+          );
+        }
+      } catch (smsErr) {
+        console.error('Failed to send company profile SMS:', smsErr);
+        // Don't fail the request; delivery was created successfully
+      }
+    }
 
     return NextResponse.json({
       success: true,

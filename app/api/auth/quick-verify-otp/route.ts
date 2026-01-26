@@ -14,7 +14,7 @@ const supabaseAdmin = createClient(
 
 export async function POST(request: NextRequest) {
   try {
-    const { phone, code, businessName, districtId } = await request.json();
+    const { phone, code, businessName, districtId, address, latitude, longitude } = await request.json();
 
     if (!phone || !code) {
       return NextResponse.json(
@@ -124,6 +124,22 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // Parse latitude and longitude
+      let finalLatitude = null;
+      let finalLongitude = null;
+      if (latitude !== undefined && latitude !== null) {
+        const lat = parseFloat(latitude);
+        if (!isNaN(lat) && lat >= -90 && lat <= 90) {
+          finalLatitude = lat;
+        }
+      }
+      if (longitude !== undefined && longitude !== null) {
+        const lng = parseFloat(longitude);
+        if (!isNaN(lng) && lng >= -180 && lng <= 180) {
+          finalLongitude = lng;
+        }
+      }
+
       // Create business record
       const { data: businessData, error: businessError } = await supabaseAdmin
         .from('businesses')
@@ -134,6 +150,9 @@ export async function POST(request: NextRequest) {
           district_id: districtId || null,
           billing_cycle: 'WEEKLY',
           active: true,
+          address: address || null,
+          latitude: finalLatitude,
+          longitude: finalLongitude,
         })
         .select('id')
         .single();

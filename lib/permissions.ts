@@ -21,7 +21,7 @@ export const PERMISSION_MODULES: PermissionModule[] = [
     id: 'businesses',
     name: 'Businesses',
     description: 'Manage registered businesses',
-    availableFor: ['STAFF'],
+    availableFor: ['STAFF', 'RIDER'],
     actions: [
       { id: 'view', name: 'View', description: 'View business list and details' },
       { id: 'create', name: 'Create', description: 'Register new businesses' },
@@ -179,6 +179,7 @@ export const DEFAULT_STAFF_PERMISSIONS: string[] = [
 // Default permissions for new RIDER users
 export const DEFAULT_RIDER_PERMISSIONS: string[] = [
   'deliveries.view_assigned',
+  'deliveries.create',
   'deliveries.update_status',
 ];
 

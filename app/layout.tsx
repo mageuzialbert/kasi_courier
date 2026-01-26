@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { createClient } from '@/lib/supabase-server';
+import ServiceWorkerRegistration from '@/components/pwa/ServiceWorkerRegistration';
 
 async function getCompanyProfile() {
   try {
@@ -17,17 +18,41 @@ async function getCompanyProfile() {
   }
 }
 
+export const viewport: Viewport = {
+  themeColor: '#22c55e',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 export async function generateMetadata(): Promise<Metadata> {
   const profile = await getCompanyProfile();
   
   return {
     title: profile?.company_name || "Kasi Courier Services",
-    description: "B2B Logistics Delivery Platform",
+    description: "B2B Logistics Delivery Platform - Request deliveries and track your shipments",
+    manifest: '/manifest.json',
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: 'default',
+      title: profile?.company_name || "Kasi Courier",
+    },
+    formatDetection: {
+      telephone: true,
+    },
     icons: profile?.favicon_url ? {
       icon: profile.favicon_url,
       shortcut: profile.favicon_url,
       apple: profile.favicon_url,
-    } : undefined,
+    } : {
+      icon: '/icons/icon.svg',
+      shortcut: '/icons/icon.svg',
+      apple: '/icons/icon-maskable.svg',
+    },
+    other: {
+      'mobile-web-app-capable': 'yes',
+    },
   };
 }
 
@@ -38,7 +63,25 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <head>
+        {/* PWA Meta Tags */}
+        <meta name="application-name" content="Kasi Courier" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Kasi Courier" />
+        <meta name="msapplication-TileColor" content="#22c55e" />
+        <meta name="msapplication-tap-highlight" content="no" />
+        
+        {/* Apple Touch Icons */}
+        <link rel="apple-touch-icon" href="/icons/icon-maskable.svg" />
+        <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-maskable.svg" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-maskable.svg" />
+        <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-maskable.svg" />
+      </head>
+      <body>
+        {children}
+        <ServiceWorkerRegistration />
+      </body>
     </html>
   );
 }

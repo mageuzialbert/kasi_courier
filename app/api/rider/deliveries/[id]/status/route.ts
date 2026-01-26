@@ -2,13 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser, supabaseAdmin } from '@/lib/auth-server';
 import { requirePermission } from '@/lib/permissions-server';
 
-// Valid status transitions
+// Valid status transitions for riders
+// Note: PENDING_CONFIRMATION can only be changed by staff/admin via the confirm endpoint
 const validTransitions: Record<string, string[]> = {
+  PENDING_CONFIRMATION: [], // Riders cannot change this - must be confirmed by staff/admin
   ASSIGNED: ['PICKED_UP', 'FAILED'],
   PICKED_UP: ['IN_TRANSIT', 'FAILED'],
   IN_TRANSIT: ['DELIVERED', 'FAILED'],
   DELIVERED: [], // Final state
   FAILED: [], // Final state
+  REJECTED: [], // Final state
 };
 
 // PUT - Update delivery status
@@ -74,12 +77,20 @@ export async function PUT(
       );
     }
 
-    // Validate status transition
+    // Check if delivery is pending confirmation
     const currentStatus = delivery.status;
+    if (currentStatus === 'PENDING_CONFIRMATION') {
+      return NextResponse.json(
+        { error: 'This delivery is pending confirmation from staff/admin. You cannot update its status until it is confirmed.' },
+        { status: 400 }
+      );
+    }
+
+    // Validate status transition
     const allowedNextStatuses = validTransitions[currentStatus] || [];
     if (!allowedNextStatuses.includes(status)) {
       return NextResponse.json(
-        { error: `Cannot transition from ${currentStatus} to ${status}. Allowed transitions: ${allowedNextStatuses.join(', ')}` },
+        { error: `Cannot transition from ${currentStatus} to ${status}. Allowed transitions: ${allowedNextStatuses.join(', ') || 'none'}` },
         { status: 400 }
       );
     }

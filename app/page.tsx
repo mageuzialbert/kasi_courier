@@ -255,6 +255,11 @@ export default async function Home() {
                     Login
                   </Link>
                 </li>
+                <li>
+                  <Link href="/staff-login" className="hover:text-white transition-colors">
+                    Staff Login
+                  </Link>
+                </li>
               </ul>
             </div>
             <div>

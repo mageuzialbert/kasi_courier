@@ -45,6 +45,7 @@ export default function StaffDeliveriesPage() {
   const [selectedDeliveryId, setSelectedDeliveryId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [assigning, setAssigning] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -140,6 +141,59 @@ export default function StaffDeliveriesPage() {
     setShowAssignModal(true);
   }
 
+  async function handleConfirmDelivery(deliveryId: string) {
+    if (confirming) return;
+    
+    setConfirming(true);
+    setError('');
+
+    try {
+      const response = await fetch(`/api/staff/deliveries/${deliveryId}/confirm`, {
+        method: 'PUT',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to confirm delivery');
+      }
+
+      loadDeliveries();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to confirm delivery');
+    } finally {
+      setConfirming(false);
+    }
+  }
+
+  async function handleRejectDelivery(deliveryId: string) {
+    if (confirming) return;
+    
+    const reason = window.prompt('Enter rejection reason (optional):');
+    if (reason === null) return; // User cancelled
+
+    setConfirming(true);
+    setError('');
+
+    try {
+      const response = await fetch(`/api/staff/deliveries/${deliveryId}/confirm`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: reason || undefined }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to reject delivery');
+      }
+
+      loadDeliveries();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to reject delivery');
+    } finally {
+      setConfirming(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -189,6 +243,8 @@ export default function StaffDeliveriesPage() {
       <DeliveriesTable
         deliveries={deliveries}
         onAssignRider={handleAssignClick}
+        onConfirm={handleConfirmDelivery}
+        onReject={handleRejectDelivery}
         showBusiness={true}
         showActions={true}
         basePath="/dashboard/staff/deliveries"

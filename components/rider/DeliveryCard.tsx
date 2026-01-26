@@ -31,19 +31,23 @@ interface DeliveryCardProps {
 }
 
 const statusColors: Record<string, string> = {
+  PENDING_CONFIRMATION: 'bg-purple-100 text-purple-800 border border-purple-300',
   ASSIGNED: 'bg-blue-100 text-blue-800 border border-blue-300',
   PICKED_UP: 'bg-yellow-100 text-yellow-800 border border-yellow-300',
   IN_TRANSIT: 'bg-orange-100 text-orange-800 border border-orange-300',
   DELIVERED: 'bg-green-100 text-green-800 border border-green-300',
   FAILED: 'bg-red-100 text-red-800 border border-red-300',
+  REJECTED: 'bg-red-100 text-red-800 border border-red-300',
 };
 
 const statusLabels: Record<string, string> = {
+  PENDING_CONFIRMATION: 'Pending Confirmation',
   ASSIGNED: 'Assigned',
   PICKED_UP: 'Picked Up',
   IN_TRANSIT: 'In Transit',
   DELIVERED: 'Delivered',
   FAILED: 'Failed',
+  REJECTED: 'Rejected',
 };
 
 export default function DeliveryCard({ delivery }: DeliveryCardProps) {

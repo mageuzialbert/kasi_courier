@@ -96,6 +96,7 @@ export default function RiderJobsPage() {
           className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
         >
           <option value="ALL">All Statuses</option>
+          <option value="PENDING_CONFIRMATION">Pending Confirmation</option>
           <option value="ASSIGNED">Assigned</option>
           <option value="PICKED_UP">Picked Up</option>
           <option value="IN_TRANSIT">In Transit</option>

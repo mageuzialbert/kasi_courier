@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useLoadScript } from '@react-google-maps/api';
 import { supabase } from '@/lib/supabase';
 import { resetPassword } from '@/lib/auth';
-import { Save, Loader2, Upload, X, Lock } from 'lucide-react';
+import { Save, Loader2, Upload, X, Lock, AlertCircle } from 'lucide-react';
+import LocationPicker from '@/components/common/LocationPicker';
 
 interface BusinessProfile {
   name: string;
@@ -14,6 +16,8 @@ interface BusinessProfile {
   postal_code: string | null;
   district_id: number | null;
   logo_url: string | null;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 interface Region {
@@ -37,6 +41,8 @@ export default function BusinessProfilePage() {
     postal_code: '',
     district_id: null,
     logo_url: null,
+    latitude: null,
+    longitude: null,
   });
   const [regions, setRegions] = useState<Region[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
@@ -52,6 +58,11 @@ export default function BusinessProfilePage() {
   const [resettingPassword, setResettingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
+
+  const { isLoaded, loadError } = useLoadScript({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    libraries: ['places'],
+  });
 
   useEffect(() => {
     loadProfile();
@@ -157,6 +168,8 @@ export default function BusinessProfilePage() {
       const postalCode = business?.postal_code ?? '';
       const districtId = business?.district_id ?? null;
       const logoUrl = business?.logo_url ?? null;
+      const latitude = business?.latitude ?? null;
+      const longitude = business?.longitude ?? null;
 
       console.log('Loading profile - Business data:', {
         hasBusiness: !!business,
@@ -164,6 +177,8 @@ export default function BusinessProfilePage() {
         city,
         postalCode,
         districtId,
+        latitude,
+        longitude,
       });
 
       setProfile({
@@ -175,6 +190,8 @@ export default function BusinessProfilePage() {
         postal_code: postalCode,
         district_id: districtId,
         logo_url: logoUrl,
+        latitude: latitude,
+        longitude: longitude,
       });
 
       // Load districts for the region if district_id exists
@@ -209,6 +226,8 @@ export default function BusinessProfilePage() {
             postal_code: '',
             district_id: null,
             logo_url: null,
+            latitude: null,
+            longitude: null,
           });
         } else {
           setError('Failed to load profile. Please try refreshing the page.');
@@ -289,6 +308,8 @@ export default function BusinessProfilePage() {
           city: profile.city || null,
           postal_code: profile.postal_code || null,
           district_id: profile.district_id || null,
+          latitude: profile.latitude,
+          longitude: profile.longitude,
         })
         .eq('id', businessIdToUse);
 
@@ -519,18 +540,47 @@ export default function BusinessProfilePage() {
 
         <div>
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Address Information</h2>
+          
+          {loadError && (
+            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 text-amber-700 rounded-md text-sm flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              <span>Google Maps failed to load. You can still enter addresses manually.</span>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Street Address
-              </label>
-              <input
-                type="text"
-                value={profile.address || ''}
-                onChange={(e) => setProfile({ ...profile, address: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
-                placeholder="Street address"
-              />
+              {isLoaded ? (
+                <LocationPicker
+                  label="Business Address"
+                  value={profile.address || ''}
+                  onChange={(address, lat, lng) => setProfile({ 
+                    ...profile, 
+                    address, 
+                    latitude: lat, 
+                    longitude: lng 
+                  })}
+                  defaultLocation={profile.latitude && profile.longitude ? { lat: profile.latitude, lng: profile.longitude } : undefined}
+                />
+              ) : loadError ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Business Address
+                  </label>
+                  <input
+                    type="text"
+                    value={profile.address || ''}
+                    onChange={(e) => setProfile({ ...profile, address: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
+                    placeholder="Street address"
+                  />
+                </div>
+              ) : (
+                <div className="flex items-center justify-center p-4">
+                  <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                  <span className="ml-2 text-gray-500 text-sm">Loading maps...</span>
+                </div>
+              )}
             </div>
 
             <div>

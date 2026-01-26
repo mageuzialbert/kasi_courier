@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useLoadScript } from '@react-google-maps/api';
 import PhoneVerification from '@/components/quick-order/PhoneVerification';
 import DeliveryForm, { DeliveryFormData } from '@/components/quick-order/DeliveryForm';
 import OrderProgress from '@/components/quick-order/OrderProgress';
+import LocationPicker from '@/components/common/LocationPicker';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
-import { CheckCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, Loader2, AlertCircle } from 'lucide-react';
 
 type Step = 'phone' | 'delivery' | 'complete';
 
@@ -42,6 +44,14 @@ export default function QuickOrderPage() {
   const [regions, setRegions] = useState<Region[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
   const [loadingLocations, setLoadingLocations] = useState(false);
+  const [businessAddress, setBusinessAddress] = useState('');
+  const [businessLatitude, setBusinessLatitude] = useState<number | null>(null);
+  const [businessLongitude, setBusinessLongitude] = useState<number | null>(null);
+
+  const { isLoaded, loadError } = useLoadScript({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    libraries: ['places'],
+  });
 
   // Load regions on mount
   useEffect(() => {
@@ -164,6 +174,9 @@ export default function QuickOrderPage() {
           code,
           businessName: isNewUser ? businessName.trim() : undefined,
           districtId: isNewUser ? selectedDistrictId : undefined,
+          address: isNewUser ? businessAddress : undefined,
+          latitude: isNewUser ? businessLatitude : undefined,
+          longitude: isNewUser ? businessLongitude : undefined,
         }),
       });
 
@@ -362,26 +375,65 @@ export default function QuickOrderPage() {
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                           />
                         </div>
-                        
+
+                        {/* Business Address with Google Maps */}
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Region
-                          </label>
-                          <select
-                            value={selectedRegionId || ''}
-                            onChange={(e) => setSelectedRegionId(e.target.value ? Number(e.target.value) : null)}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                          >
-                            <option value="">Select a region (optional)</option>
-                            {regions.map((region) => (
-                              <option key={region.id} value={region.id}>
-                                {region.name}
-                              </option>
-                            ))}
-                          </select>
+                          {loadError && (
+                            <div className="mb-2 p-2 bg-amber-50 border border-amber-200 text-amber-700 rounded text-xs flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3" />
+                              <span>Maps unavailable. Enter address manually.</span>
+                            </div>
+                          )}
+                          {isLoaded ? (
+                            <LocationPicker
+                              label="Business Address"
+                              value={businessAddress}
+                              onChange={(address, lat, lng) => {
+                                setBusinessAddress(address);
+                                setBusinessLatitude(lat);
+                                setBusinessLongitude(lng);
+                              }}
+                            />
+                          ) : loadError ? (
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Business Address
+                              </label>
+                              <input
+                                type="text"
+                                value={businessAddress}
+                                onChange={(e) => setBusinessAddress(e.target.value)}
+                                placeholder="Enter your business address"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                              />
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center p-3">
+                              <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                              <span className="ml-2 text-gray-500 text-sm">Loading maps...</span>
+                            </div>
+                          )}
                         </div>
                         
-                        {selectedRegionId && (
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Region
+                            </label>
+                            <select
+                              value={selectedRegionId || ''}
+                              onChange={(e) => setSelectedRegionId(e.target.value ? Number(e.target.value) : null)}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                            >
+                              <option value="">Select region</option>
+                              {regions.map((region) => (
+                                <option key={region.id} value={region.id}>
+                                  {region.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                               District
@@ -389,10 +441,10 @@ export default function QuickOrderPage() {
                             <select
                               value={selectedDistrictId || ''}
                               onChange={(e) => setSelectedDistrictId(e.target.value ? Number(e.target.value) : null)}
-                              disabled={loadingLocations}
+                              disabled={!selectedRegionId || loadingLocations}
                               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50"
                             >
-                              <option value="">Select a district (optional)</option>
+                              <option value="">Select district</option>
                               {districts.map((district) => (
                                 <option key={district.id} value={district.id}>
                                   {district.name}
@@ -400,7 +452,7 @@ export default function QuickOrderPage() {
                               ))}
                             </select>
                           </div>
-                        )}
+                        </div>
                       </div>
                     </div>
                   )}

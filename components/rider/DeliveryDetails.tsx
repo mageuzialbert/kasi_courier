@@ -52,11 +52,13 @@ interface DeliveryDetailsProps {
 }
 
 const statusColors: Record<string, string> = {
+  PENDING_CONFIRMATION: 'bg-purple-100 text-purple-800',
   ASSIGNED: 'bg-blue-100 text-blue-800',
   PICKED_UP: 'bg-yellow-100 text-yellow-800',
   IN_TRANSIT: 'bg-orange-100 text-orange-800',
   DELIVERED: 'bg-green-100 text-green-800',
   FAILED: 'bg-red-100 text-red-800',
+  REJECTED: 'bg-red-100 text-red-800',
 };
 
 export default function DeliveryDetails({
@@ -124,6 +126,40 @@ export default function DeliveryDetails({
           {delivery.status.replace('_', ' ')}
         </span>
       </div>
+
+      {/* Pending Confirmation Notice */}
+      {delivery.status === 'PENDING_CONFIRMATION' && (
+        <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <Clock className="w-5 h-5 text-purple-600" />
+            </div>
+            <div>
+              <h4 className="font-semibold text-purple-900">Awaiting Confirmation</h4>
+              <p className="text-sm text-purple-700 mt-1">
+                This delivery is pending approval from staff/admin. Once confirmed, you will be able to start the delivery.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rejected Notice */}
+      {delivery.status === 'REJECTED' && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-red-100 rounded-lg">
+              <Clock className="w-5 h-5 text-red-600" />
+            </div>
+            <div>
+              <h4 className="font-semibold text-red-900">Delivery Rejected</h4>
+              <p className="text-sm text-red-700 mt-1">
+                This delivery request was rejected by staff/admin.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Quick Navigation Card - Most Important for Riders */}
       {nextDestination && (

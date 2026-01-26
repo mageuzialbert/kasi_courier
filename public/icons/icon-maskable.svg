@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#22c55e"/>
+      <stop offset="100%" style="stop-color:#16a34a"/>
+    </linearGradient>
+  </defs>
+  <!-- Full background for maskable icon (safe zone is inner 80%) -->
+  <rect width="512" height="512" fill="url(#bgGradient)"/>
+  <!-- Letter K - centered in safe zone -->
+  <text x="256" y="350" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-weight="bold" font-size="260">K</text>
+  <!-- Arrow indicator (forward motion) - within safe zone -->
+  <path d="M365 195 L400 256 L365 317" stroke="#eab308" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>

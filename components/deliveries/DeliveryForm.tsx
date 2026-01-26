@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useLoadScript } from '@react-google-maps/api';
-import { Loader2, MapPin, User, Phone, Package, AlertCircle } from 'lucide-react';
+import { Loader2, MapPin, User, Phone, Package, AlertCircle, ChevronDown, ChevronUp, Building2, Check } from 'lucide-react';
 import LocationPicker from '@/components/common/LocationPicker';
 
 interface Region {
@@ -19,6 +19,11 @@ interface District {
 interface Business {
   id: string;
   name: string;
+  phone?: string;
+  address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  district_id?: number | null;
 }
 
 interface DeliveryFormProps {
@@ -65,6 +70,8 @@ export default function DeliveryForm({
   const [loadingBusinesses, setLoadingBusinesses] = useState(false);
   const [loadingPickupDistricts, setLoadingPickupDistricts] = useState(false);
   const [loadingDropoffDistricts, setLoadingDropoffDistricts] = useState(false);
+  const [pickupCollapsed, setPickupCollapsed] = useState(false);
+  const [pickupPreFilled, setPickupPreFilled] = useState(false);
 
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
@@ -89,6 +96,63 @@ export default function DeliveryForm({
     dropoff_district_id: null,
     package_description: '',
   });
+
+  // Auto-populate pickup when business is selected
+  async function handleBusinessChange(selectedBusinessId: string) {
+    setFormData(prev => ({ ...prev, business_id: selectedBusinessId }));
+    
+    if (!selectedBusinessId) {
+      setPickupPreFilled(false);
+      setPickupCollapsed(false);
+      return;
+    }
+
+    // Find business in the list with full details
+    const selectedBusiness = businesses.find(b => b.id === selectedBusinessId);
+    
+    if (selectedBusiness) {
+      // Auto-populate pickup fields from business data
+      const newFormData: Partial<DeliveryFormData> = {
+        business_id: selectedBusinessId,
+        pickup_name: selectedBusiness.name || '',
+        pickup_phone: selectedBusiness.phone || '',
+        pickup_address: selectedBusiness.address || '',
+        pickup_latitude: selectedBusiness.latitude || null,
+        pickup_longitude: selectedBusiness.longitude || null,
+        pickup_district_id: selectedBusiness.district_id || null,
+      };
+
+      // If district exists, find its region
+      if (selectedBusiness.district_id) {
+        try {
+          const response = await fetch('/api/districts');
+          if (response.ok) {
+            const allDistricts = await response.json();
+            const district = allDistricts.find((d: District) => d.id === selectedBusiness.district_id);
+            if (district) {
+              newFormData.pickup_region_id = district.region_id;
+              // Load districts for that region
+              const districtResponse = await fetch(`/api/districts?region_id=${district.region_id}`);
+              if (districtResponse.ok) {
+                const districtsData = await districtResponse.json();
+                setPickupDistricts(districtsData);
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Error loading district region:', err);
+        }
+      }
+
+      setFormData(prev => ({ ...prev, ...newFormData }));
+      setPickupPreFilled(true);
+      
+      // On mobile (< 1024px), collapse pickup section
+      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+        setPickupCollapsed(true);
+      }
+    }
+  }
 
   useEffect(() => {
     async function loadRegions() {
@@ -210,11 +274,14 @@ export default function DeliveryForm({
       {showBusinessSelector && (
         <div className="bg-gray-50 rounded-lg p-4">
           <label className={labelClass}>
-            Business <span className="text-red-500">*</span>
+            <span className="flex items-center gap-1.5">
+              <Building2 className="w-4 h-4 text-gray-400" />
+              Business <span className="text-red-500">*</span>
+            </span>
           </label>
           <select
             value={formData.business_id || ''}
-            onChange={(e) => setFormData({ ...formData, business_id: e.target.value })}
+            onChange={(e) => handleBusinessChange(e.target.value)}
             required
             disabled={loadingBusinesses}
             className={inputClass}
@@ -226,6 +293,12 @@ export default function DeliveryForm({
               </option>
             ))}
           </select>
+          {pickupPreFilled && (
+            <p className="mt-2 text-sm text-green-600 flex items-center gap-1">
+              <Check className="w-4 h-4" />
+              Pickup details auto-filled from business
+            </p>
+          )}
         </div>
       )}
 
@@ -233,14 +306,43 @@ export default function DeliveryForm({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Pickup Details - Left Column */}
         <div className="bg-green-50/50 rounded-xl p-5 border border-green-100">
-          <div className={sectionHeaderClass}>
+          <button
+            type="button"
+            onClick={() => setPickupCollapsed(!pickupCollapsed)}
+            className={`${sectionHeaderClass} w-full cursor-pointer hover:opacity-80 transition-opacity`}
+          >
             <div className="p-2 bg-green-100 rounded-lg">
               <MapPin className="w-5 h-5 text-green-600" />
             </div>
-            <span>Pickup Details</span>
-          </div>
+            <span className="flex-1 text-left">Pickup Details</span>
+            {pickupPreFilled && (
+              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full flex items-center gap-1">
+                <Check className="w-3 h-3" />
+                Pre-filled
+              </span>
+            )}
+            <span className="lg:hidden">
+              {pickupCollapsed ? <ChevronDown className="w-5 h-5 text-gray-400" /> : <ChevronUp className="w-5 h-5 text-gray-400" />}
+            </span>
+          </button>
           
-          <div className="space-y-4">
+          {/* Collapsed Summary (mobile only) */}
+          {pickupCollapsed && pickupPreFilled && (
+            <div className="lg:hidden bg-green-100/50 rounded-lg p-3 mb-2 text-sm">
+              <p className="font-medium text-green-800">{formData.pickup_name}</p>
+              <p className="text-green-700">{formData.pickup_phone}</p>
+              <p className="text-green-600 truncate">{formData.pickup_address || 'No address'}</p>
+              <button 
+                type="button"
+                onClick={() => setPickupCollapsed(false)}
+                className="text-green-700 underline text-xs mt-1"
+              >
+                Edit pickup details
+              </button>
+            </div>
+          )}
+          
+          <div className={`space-y-4 ${pickupCollapsed ? 'hidden lg:block' : ''}`}>
             <div>
               <label className={labelClass}>
                 <span className="flex items-center gap-1.5">
@@ -288,6 +390,7 @@ export default function DeliveryForm({
                       pickup_longitude: lng
                     })
                   }
+                  defaultLocation={formData.pickup_latitude && formData.pickup_longitude ? { lat: formData.pickup_latitude, lng: formData.pickup_longitude } : undefined}
                   error={formData.pickup_address ? undefined : "Address is required"}
                 />
               ) : (

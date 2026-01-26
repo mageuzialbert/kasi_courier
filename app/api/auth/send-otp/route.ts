@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Send OTP via BongoLive SMS
+    // Send OTP via iPAB SmartSMS
     const smsResult = await sendOTPSMS(phone, otpCode);
 
     if (!smsResult.success) {

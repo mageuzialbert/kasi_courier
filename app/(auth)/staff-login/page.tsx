@@ -119,15 +119,7 @@ export default function StaffLoginPage() {
           </button>
         </form>
 
-        {/* Demo Credentials Info */}
-        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
-          <p className="text-sm font-medium text-blue-900 mb-2">Demo Credentials:</p>
-          <div className="text-xs text-blue-800 space-y-1">
-            <p><strong>Admin:</strong> admin@kasicourier.com / Admin123!</p>
-            <p><strong>Staff:</strong> staff@kasicourier.com / Staff123!</p>
-            <p><strong>Rider:</strong> rider@kasicourier.com / Rider123!</p>
-          </div>
-        </div>
+
 
         {/* Business Login Link */}
         <div className="mt-6 text-center">

@@ -33,6 +33,8 @@ interface Delivery {
 interface DeliveriesTableProps {
   deliveries: Delivery[];
   onAssignRider?: (deliveryId: string) => void;
+  onConfirm?: (deliveryId: string) => void;
+  onReject?: (deliveryId: string) => void;
   showBusiness?: boolean;
   showActions?: boolean;
   basePath?: string;
@@ -40,16 +42,20 @@ interface DeliveriesTableProps {
 
 const statusColors: Record<string, string> = {
   CREATED: 'bg-gray-100 text-gray-800 border border-gray-300',
+  PENDING_CONFIRMATION: 'bg-purple-100 text-purple-800 border border-purple-300',
   ASSIGNED: 'bg-blue-100 text-blue-800 border border-blue-300',
   PICKED_UP: 'bg-yellow-100 text-yellow-800 border border-yellow-300',
   IN_TRANSIT: 'bg-orange-100 text-orange-800 border border-orange-300',
   DELIVERED: 'bg-green-100 text-green-800 border border-green-300',
   FAILED: 'bg-red-100 text-red-800 border border-red-300',
+  REJECTED: 'bg-red-100 text-red-800 border border-red-300',
 };
 
 export default function DeliveriesTable({
   deliveries,
   onAssignRider,
+  onConfirm,
+  onReject,
   showBusiness = false,
   showActions = true,
   basePath = '/dashboard/business/deliveries',
@@ -83,11 +89,13 @@ export default function DeliveriesTable({
           >
             <option value="ALL">All Statuses</option>
             <option value="CREATED">Created</option>
+            <option value="PENDING_CONFIRMATION">Pending Confirmation</option>
             <option value="ASSIGNED">Assigned</option>
             <option value="PICKED_UP">Picked Up</option>
             <option value="IN_TRANSIT">In Transit</option>
             <option value="DELIVERED">Delivered</option>
             <option value="FAILED">Failed</option>
+            <option value="REJECTED">Rejected</option>
           </select>
         </div>
         <div className="text-sm text-gray-600">
@@ -197,7 +205,23 @@ export default function DeliveriesTable({
                             <Eye className="w-4 h-4" />
                             <span className="sr-only">View</span>
                           </Link>
-                          {!delivery.assigned_rider_id && onAssignRider && (
+                          {delivery.status === 'PENDING_CONFIRMATION' && onConfirm && (
+                            <button
+                              onClick={() => onConfirm(delivery.id)}
+                              className="text-green-600 hover:text-green-800 font-medium"
+                            >
+                              Confirm
+                            </button>
+                          )}
+                          {delivery.status === 'PENDING_CONFIRMATION' && onReject && (
+                            <button
+                              onClick={() => onReject(delivery.id)}
+                              className="text-red-600 hover:text-red-800 font-medium"
+                            >
+                              Reject
+                            </button>
+                          )}
+                          {!delivery.assigned_rider_id && delivery.status === 'CREATED' && onAssignRider && (
                             <button
                               onClick={() => onAssignRider(delivery.id)}
                               className="text-primary hover:text-primary-dark"

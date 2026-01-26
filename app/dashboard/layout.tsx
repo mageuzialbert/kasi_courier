@@ -192,6 +192,18 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       icon: Package,
       permissions: ['deliveries.view_assigned'],
     },
+    { 
+      href: '/dashboard/rider/create-delivery', 
+      label: 'Create Delivery', 
+      icon: Package,
+      permissions: ['deliveries.create'],
+    },
+    { 
+      href: '/dashboard/rider/register-business', 
+      label: 'Register Business', 
+      icon: Building2,
+      permissions: ['businesses.create'],
+    },
   ];
 
   // Filter nav items based on permissions

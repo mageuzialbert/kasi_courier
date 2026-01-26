@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useLoadScript } from '@react-google-maps/api';
+import { Loader2, AlertCircle } from 'lucide-react';
+import LocationPicker from '@/components/common/LocationPicker';
 
 interface Business {
   id: string;
@@ -10,12 +12,27 @@ interface Business {
   delivery_fee: number | null;
   active: boolean;
   created_at: string;
+  address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  district_id?: number | null;
   user?: {
     id: string;
     name: string;
     phone: string;
     role: string;
   };
+}
+
+interface Region {
+  id: number;
+  name: string;
+}
+
+interface District {
+  id: number;
+  name: string;
+  region_id: number;
 }
 
 interface BusinessFormProps {
@@ -33,6 +50,10 @@ export interface BusinessFormData {
   password: string;
   delivery_fee: string;
   active: boolean;
+  address: string;
+  latitude: number | null;
+  longitude: number | null;
+  district_id: number | null;
 }
 
 export default function BusinessForm({
@@ -51,11 +72,103 @@ export default function BusinessForm({
     password: '',
     delivery_fee: business?.delivery_fee?.toString() || '',
     active: business?.active ?? true,
+    address: business?.address || '',
+    latitude: business?.latitude || null,
+    longitude: business?.longitude || null,
+    district_id: business?.district_id || null,
   });
+
+  const [regions, setRegions] = useState<Region[]>([]);
+  const [districts, setDistricts] = useState<District[]>([]);
+  const [selectedRegionId, setSelectedRegionId] = useState<number | null>(null);
+  const [loadingRegions, setLoadingRegions] = useState(true);
+  const [loadingDistricts, setLoadingDistricts] = useState(false);
+
+  const { isLoaded, loadError } = useLoadScript({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    libraries: ['places'],
+  });
+
+  // Load regions on mount
+  useEffect(() => {
+    async function loadRegions() {
+      try {
+        const response = await fetch('/api/regions');
+        if (response.ok) {
+          const data = await response.json();
+          setRegions(data);
+        }
+      } catch (err) {
+        console.error('Error loading regions:', err);
+      } finally {
+        setLoadingRegions(false);
+      }
+    }
+    loadRegions();
+  }, []);
+
+  // Load districts when region changes
+  useEffect(() => {
+    async function loadDistricts() {
+      if (!selectedRegionId) {
+        setDistricts([]);
+        return;
+      }
+
+      setLoadingDistricts(true);
+      try {
+        const response = await fetch(`/api/districts?region_id=${selectedRegionId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setDistricts(data);
+        }
+      } catch (err) {
+        console.error('Error loading districts:', err);
+      } finally {
+        setLoadingDistricts(false);
+      }
+    }
+    loadDistricts();
+  }, [selectedRegionId]);
+
+  // Load region for existing district (when editing)
+  useEffect(() => {
+    async function loadRegionForDistrict() {
+      if (business?.district_id && regions.length > 0) {
+        try {
+          const response = await fetch(`/api/districts?region_id=`);
+          if (response.ok) {
+            const allDistricts = await response.json();
+            const district = allDistricts.find((d: District) => d.id === business.district_id);
+            if (district) {
+              setSelectedRegionId(district.region_id);
+            }
+          }
+        } catch (err) {
+          console.error('Error loading district region:', err);
+        }
+      }
+    }
+    loadRegionForDistrict();
+  }, [business?.district_id, regions]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     await onSubmit(formData);
+  }
+
+  function handleLocationChange(address: string, lat: number | null, lng: number | null) {
+    setFormData({
+      ...formData,
+      address,
+      latitude: lat,
+      longitude: lng,
+    });
+  }
+
+  function handleRegionChange(regionId: number | null) {
+    setSelectedRegionId(regionId);
+    setFormData({ ...formData, district_id: null }); // Reset district when region changes
   }
 
   return (
@@ -63,6 +176,13 @@ export default function BusinessForm({
       {error && (
         <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
           {error}
+        </div>
+      )}
+
+      {loadError && (
+        <div className="p-3 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg text-sm flex items-center gap-2">
+          <AlertCircle className="w-4 h-4" />
+          <span>Google Maps failed to load. You can still enter addresses manually.</span>
         </div>
       )}
 
@@ -156,6 +276,85 @@ export default function BusinessForm({
           <label htmlFor="active" className="text-sm font-medium text-gray-700">
             Active
           </label>
+        </div>
+      </div>
+
+      {/* Location Section */}
+      <div className="border-t pt-4 mt-4">
+        <h3 className="text-md font-semibold text-gray-800 mb-3">Business Location</h3>
+        
+        {/* Address with Google Maps */}
+        <div className="mb-4">
+          {isLoaded ? (
+            <LocationPicker
+              label="Business Address"
+              value={formData.address}
+              onChange={handleLocationChange}
+              defaultLocation={formData.latitude && formData.longitude ? { lat: formData.latitude, lng: formData.longitude } : undefined}
+            />
+          ) : loadError ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Business Address
+              </label>
+              <input
+                type="text"
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                placeholder="Enter business address"
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+            </div>
+          ) : (
+            <div className="flex items-center justify-center p-4">
+              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+              <span className="ml-2 text-gray-500 text-sm">Loading maps...</span>
+            </div>
+          )}
+        </div>
+
+        {/* Region and District */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Region
+            </label>
+            <select
+              value={selectedRegionId || ''}
+              onChange={(e) => handleRegionChange(e.target.value ? parseInt(e.target.value) : null)}
+              disabled={loadingRegions}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-gray-100"
+            >
+              <option value="">Select region</option>
+              {regions.map((region) => (
+                <option key={region.id} value={region.id}>
+                  {region.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              District
+            </label>
+            <select
+              value={formData.district_id || ''}
+              onChange={(e) => setFormData({ ...formData, district_id: e.target.value ? parseInt(e.target.value) : null })}
+              disabled={!selectedRegionId || loadingDistricts}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-gray-100"
+            >
+              <option value="">Select district</option>
+              {districts.map((district) => (
+                <option key={district.id} value={district.id}>
+                  {district.name}
+                </option>
+              ))}
+            </select>
+            {!selectedRegionId && (
+              <p className="mt-1 text-xs text-gray-500">Select a region first</p>
+            )}
+          </div>
         </div>
       </div>
 

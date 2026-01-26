@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser, supabaseAdmin } from '@/lib/auth-server';
+import { sendSMS } from '@/lib/sms';
 
 // PUT - Assign rider to delivery
 export async function PUT(
@@ -36,7 +37,7 @@ export async function PUT(
     // Verify rider exists and is a RIDER
     const { data: rider, error: riderError } = await supabaseAdmin
       .from('users')
-      .select('id, name, role, active')
+      .select('id, name, role, active, phone')
       .eq('id', rider_id)
       .single();
 
@@ -103,7 +104,13 @@ export async function PUT(
         created_by: user.id,
       });
 
-    // TODO: Send SMS notification to rider (use lib/sms.ts)
+    // Send SMS notification to rider
+    if (rider.phone) {
+      await sendSMS(
+        rider.phone,
+        `You have been assigned a new delivery (ID: ${params.id.substring(0, 8)}). Please check your dashboard app for details.`
+      );
+    }
 
     return NextResponse.json({
       success: true,

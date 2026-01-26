@@ -24,6 +24,9 @@ export async function PUT(
       delivery_fee,
       active,
       district_id,
+      address,
+      latitude,
+      longitude,
     } = await request.json();
 
     // Verify business exists
@@ -71,6 +74,31 @@ export async function PUT(
     }
     if (active !== undefined) updates.active = active;
     if (district_id !== undefined) updates.district_id = district_id;
+    if (address !== undefined) updates.address = address || null;
+    
+    // Handle latitude
+    if (latitude !== undefined) {
+      if (latitude === null) {
+        updates.latitude = null;
+      } else {
+        const lat = parseFloat(latitude);
+        if (!isNaN(lat) && lat >= -90 && lat <= 90) {
+          updates.latitude = lat;
+        }
+      }
+    }
+    
+    // Handle longitude
+    if (longitude !== undefined) {
+      if (longitude === null) {
+        updates.longitude = null;
+      } else {
+        const lng = parseFloat(longitude);
+        if (!isNaN(lng) && lng >= -180 && lng <= 180) {
+          updates.longitude = lng;
+        }
+      }
+    }
 
     // Update business record
     const { data: updatedBusiness, error: updateError } = await supabaseAdmin

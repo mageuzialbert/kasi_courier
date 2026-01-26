@@ -133,6 +133,9 @@ export async function POST(request: NextRequest) {
       delivery_fee,
       district_id,
       package_id,
+      address,
+      latitude,
+      longitude,
     } = await request.json();
 
     // Validation
@@ -249,6 +252,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Parse latitude and longitude
+    let finalLatitude = null;
+    let finalLongitude = null;
+    if (latitude !== undefined && latitude !== null) {
+      const lat = parseFloat(latitude);
+      if (!isNaN(lat) && lat >= -90 && lat <= 90) {
+        finalLatitude = lat;
+      }
+    }
+    if (longitude !== undefined && longitude !== null) {
+      const lng = parseFloat(longitude);
+      if (!isNaN(lng) && lng >= -180 && lng <= 180) {
+        finalLongitude = lng;
+      }
+    }
+
     // Create business record
     const { data: newBusiness, error: businessError } = await supabaseAdmin
       .from('businesses')
@@ -261,6 +280,9 @@ export async function POST(request: NextRequest) {
         delivery_fee: finalDeliveryFee,
         billing_cycle: 'WEEKLY',
         active: true,
+        address: address || null,
+        latitude: finalLatitude,
+        longitude: finalLongitude,
       })
       .select()
       .single();

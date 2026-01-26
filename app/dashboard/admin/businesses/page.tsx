@@ -15,6 +15,10 @@ interface Business {
   delivery_fee: number | null;
   active: boolean;
   created_at: string;
+  address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  district_id?: number | null;
   user?: {
     id: string;
     name: string;
@@ -112,6 +116,10 @@ export default function AdminBusinessesPage() {
           name: data.name,
           phone: data.phone,
           active: data.active,
+          address: data.address || null,
+          latitude: data.latitude,
+          longitude: data.longitude,
+          district_id: data.district_id,
         };
 
         if (data.delivery_fee.trim()) {
@@ -141,6 +149,10 @@ export default function AdminBusinessesPage() {
           email: data.email,
           phone: data.phone,
           password: data.password,
+          address: data.address || null,
+          latitude: data.latitude,
+          longitude: data.longitude,
+          district_id: data.district_id,
         };
 
         if (data.delivery_fee.trim()) {
