@@ -130,9 +130,17 @@ function BusinessDeliveriesContent() {
       if (business.delivery_fee) {
         // Use business's custom delivery fee if set
         deliveryFee = parseFloat(business.delivery_fee.toString());
-      } else if (business.delivery_fee_packages) {
+      } else if (
+        business.delivery_fee_packages &&
+        typeof business.delivery_fee_packages === "object" &&
+        !Array.isArray(business.delivery_fee_packages)
+      ) {
         // Use business's package fee
-        deliveryFee = parseFloat((business.delivery_fee_packages as { fee_per_delivery: number }).fee_per_delivery.toString());
+        const packages = business.delivery_fee_packages as {
+          id: any;
+          fee_per_delivery: any;
+        };
+        deliveryFee = parseFloat(packages.fee_per_delivery.toString());
       } else {
         // Fall back to default package
         const { data: defaultPackage } = await supabase

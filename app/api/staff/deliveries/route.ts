@@ -230,13 +230,17 @@ export async function POST(request: NextRequest) {
     } else if (business.delivery_fee) {
       // Use business's custom delivery fee if set
       finalDeliveryFee = parseFloat(business.delivery_fee.toString());
-    } else if (business.delivery_fee_packages) {
+    } else if (
+      business.delivery_fee_packages &&
+      typeof business.delivery_fee_packages === "object" &&
+      !Array.isArray(business.delivery_fee_packages)
+    ) {
       // Use business's package fee
-      finalDeliveryFee = parseFloat(
-        (
-          business.delivery_fee_packages as { fee_per_delivery: number }
-        ).fee_per_delivery.toString(),
-      );
+      const packages = business.delivery_fee_packages as {
+        id: any;
+        fee_per_delivery: any;
+      };
+      finalDeliveryFee = parseFloat(packages.fee_per_delivery.toString());
     } else {
       // Fall back to default package
       const { data: defaultPackage } = await supabaseAdmin
