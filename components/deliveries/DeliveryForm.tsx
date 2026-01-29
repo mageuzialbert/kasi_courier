@@ -1,9 +1,21 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useLoadScript } from '@react-google-maps/api';
-import { Loader2, MapPin, User, Phone, Package, AlertCircle, ChevronDown, ChevronUp, Building2, Check } from 'lucide-react';
-import LocationPicker from '@/components/common/LocationPicker';
+import { useState, useEffect } from "react";
+import { useLoadScript } from "@react-google-maps/api";
+import {
+  Loader2,
+  MapPin,
+  User,
+  Phone,
+  Package,
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  Building2,
+  Check,
+  DollarSign,
+} from "lucide-react";
+import LocationPicker from "@/components/common/LocationPicker";
 
 interface Region {
   id: number;
@@ -24,6 +36,12 @@ interface Business {
   latitude?: number | null;
   longitude?: number | null;
   district_id?: number | null;
+  delivery_fee?: number | null;
+  package_id?: string | null;
+  delivery_fee_packages?: {
+    id: string;
+    fee_per_delivery: number;
+  } | null;
 }
 
 interface DeliveryFormProps {
@@ -33,6 +51,7 @@ interface DeliveryFormProps {
   error: string;
   businessId?: string | null;
   showBusinessSelector?: boolean;
+  showDeliveryFee?: boolean;
 }
 
 export interface DeliveryFormData {
@@ -52,15 +71,17 @@ export interface DeliveryFormData {
   dropoff_region_id: number | null;
   dropoff_district_id: number | null;
   package_description: string;
+  delivery_fee?: number;
 }
 
-export default function DeliveryForm({ 
-  onSubmit, 
+export default function DeliveryForm({
+  onSubmit,
   onCancel,
-  loading, 
+  loading,
   error,
   businessId,
   showBusinessSelector = false,
+  showDeliveryFee = false,
 }: DeliveryFormProps) {
   const [regions, setRegions] = useState<Region[]>([]);
   const [pickupDistricts, setPickupDistricts] = useState<District[]>([]);
@@ -72,67 +93,92 @@ export default function DeliveryForm({
   const [loadingDropoffDistricts, setLoadingDropoffDistricts] = useState(false);
   const [pickupCollapsed, setPickupCollapsed] = useState(false);
   const [pickupPreFilled, setPickupPreFilled] = useState(false);
+  const [defaultPackageFee, setDefaultPackageFee] = useState<number>(0);
 
   const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
-    libraries: ['places'],
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+    libraries: ["places"],
   });
 
   const [formData, setFormData] = useState<DeliveryFormData>({
     business_id: businessId || undefined,
-    pickup_address: '',
+    pickup_address: "",
     pickup_latitude: null,
     pickup_longitude: null,
-    pickup_name: '',
-    pickup_phone: '',
+    pickup_name: "",
+    pickup_phone: "",
     pickup_region_id: null,
     pickup_district_id: null,
-    dropoff_address: '',
+    dropoff_address: "",
     dropoff_latitude: null,
     dropoff_longitude: null,
-    dropoff_name: '',
-    dropoff_phone: '',
+    dropoff_name: "",
+    dropoff_phone: "",
     dropoff_region_id: null,
     dropoff_district_id: null,
-    package_description: '',
+    package_description: "",
+    delivery_fee: 0,
   });
 
   // Auto-populate pickup when business is selected
   async function handleBusinessChange(selectedBusinessId: string) {
-    setFormData(prev => ({ ...prev, business_id: selectedBusinessId }));
-    
+    setFormData((prev) => ({ ...prev, business_id: selectedBusinessId }));
+
     if (!selectedBusinessId) {
       setPickupPreFilled(false);
       setPickupCollapsed(false);
+      // Reset to default package fee when no business selected
+      setFormData((prev) => ({ ...prev, delivery_fee: defaultPackageFee }));
       return;
     }
 
     // Find business in the list with full details
-    const selectedBusiness = businesses.find(b => b.id === selectedBusinessId);
-    
+    const selectedBusiness = businesses.find(
+      (b) => b.id === selectedBusinessId,
+    );
+
     if (selectedBusiness) {
+      // Determine delivery fee for this business
+      let businessDeliveryFee = defaultPackageFee;
+      if (selectedBusiness.delivery_fee) {
+        // Use business's custom delivery fee
+        businessDeliveryFee = parseFloat(
+          selectedBusiness.delivery_fee.toString(),
+        );
+      } else if (selectedBusiness.delivery_fee_packages?.fee_per_delivery) {
+        // Use business's package fee
+        businessDeliveryFee = parseFloat(
+          selectedBusiness.delivery_fee_packages.fee_per_delivery.toString(),
+        );
+      }
+
       // Auto-populate pickup fields from business data
       const newFormData: Partial<DeliveryFormData> = {
         business_id: selectedBusinessId,
-        pickup_name: selectedBusiness.name || '',
-        pickup_phone: selectedBusiness.phone || '',
-        pickup_address: selectedBusiness.address || '',
+        pickup_name: selectedBusiness.name || "",
+        pickup_phone: selectedBusiness.phone || "",
+        pickup_address: selectedBusiness.address || "",
         pickup_latitude: selectedBusiness.latitude || null,
         pickup_longitude: selectedBusiness.longitude || null,
         pickup_district_id: selectedBusiness.district_id || null,
+        delivery_fee: businessDeliveryFee,
       };
 
       // If district exists, find its region
       if (selectedBusiness.district_id) {
         try {
-          const response = await fetch('/api/districts');
+          const response = await fetch("/api/districts");
           if (response.ok) {
             const allDistricts = await response.json();
-            const district = allDistricts.find((d: District) => d.id === selectedBusiness.district_id);
+            const district = allDistricts.find(
+              (d: District) => d.id === selectedBusiness.district_id,
+            );
             if (district) {
               newFormData.pickup_region_id = district.region_id;
               // Load districts for that region
-              const districtResponse = await fetch(`/api/districts?region_id=${district.region_id}`);
+              const districtResponse = await fetch(
+                `/api/districts?region_id=${district.region_id}`,
+              );
               if (districtResponse.ok) {
                 const districtsData = await districtResponse.json();
                 setPickupDistricts(districtsData);
@@ -140,15 +186,15 @@ export default function DeliveryForm({
             }
           }
         } catch (err) {
-          console.error('Error loading district region:', err);
+          console.error("Error loading district region:", err);
         }
       }
 
-      setFormData(prev => ({ ...prev, ...newFormData }));
+      setFormData((prev) => ({ ...prev, ...newFormData }));
       setPickupPreFilled(true);
-      
+
       // On mobile (< 1024px), collapse pickup section
-      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      if (typeof window !== "undefined" && window.innerWidth < 1024) {
         setPickupCollapsed(true);
       }
     }
@@ -157,13 +203,13 @@ export default function DeliveryForm({
   useEffect(() => {
     async function loadRegions() {
       try {
-        const response = await fetch('/api/regions');
+        const response = await fetch("/api/regions");
         if (response.ok) {
           const data = await response.json();
           setRegions(data);
         }
       } catch (error) {
-        console.error('Error loading regions:', error);
+        console.error("Error loading regions:", error);
       } finally {
         setLoadingRegions(false);
       }
@@ -171,18 +217,46 @@ export default function DeliveryForm({
     loadRegions();
   }, []);
 
+  // Load default package fee on mount
+  useEffect(() => {
+    async function loadDefaultPackageFee() {
+      try {
+        const response = await fetch("/api/delivery-packages/public");
+        if (response.ok) {
+          const packages = await response.json();
+          const defaultPkg = packages.find(
+            (p: { is_default: boolean; active: boolean }) =>
+              p.is_default && p.active,
+          );
+          if (defaultPkg) {
+            const fee = parseFloat(defaultPkg.fee_per_delivery.toString());
+            setDefaultPackageFee(fee);
+            // Set initial delivery fee to default package fee
+            setFormData((prev) => ({ ...prev, delivery_fee: fee }));
+          }
+        }
+      } catch (error) {
+        console.error("Error loading default package fee:", error);
+      }
+    }
+    loadDefaultPackageFee();
+  }, []);
+
   useEffect(() => {
     if (showBusinessSelector) {
       async function loadBusinesses() {
         setLoadingBusinesses(true);
         try {
-          const response = await fetch('/api/admin/businesses?limit=1000');
+          // Fetch businesses with their delivery fee package info
+          const response = await fetch(
+            "/api/admin/businesses?limit=1000&include_package=true",
+          );
           if (response.ok) {
             const data = await response.json();
             setBusinesses(data);
           }
         } catch (error) {
-          console.error('Error loading businesses:', error);
+          console.error("Error loading businesses:", error);
         } finally {
           setLoadingBusinesses(false);
         }
@@ -195,19 +269,21 @@ export default function DeliveryForm({
     async function loadPickupDistricts() {
       if (!formData.pickup_region_id) {
         setPickupDistricts([]);
-        setFormData(prev => ({ ...prev, pickup_district_id: null }));
+        setFormData((prev) => ({ ...prev, pickup_district_id: null }));
         return;
       }
 
       setLoadingPickupDistricts(true);
       try {
-        const response = await fetch(`/api/districts?region_id=${formData.pickup_region_id}`);
+        const response = await fetch(
+          `/api/districts?region_id=${formData.pickup_region_id}`,
+        );
         if (response.ok) {
           const data = await response.json();
           setPickupDistricts(data);
         }
       } catch (error) {
-        console.error('Error loading districts:', error);
+        console.error("Error loading districts:", error);
       } finally {
         setLoadingPickupDistricts(false);
       }
@@ -219,19 +295,21 @@ export default function DeliveryForm({
     async function loadDropoffDistricts() {
       if (!formData.dropoff_region_id) {
         setDropoffDistricts([]);
-        setFormData(prev => ({ ...prev, dropoff_district_id: null }));
+        setFormData((prev) => ({ ...prev, dropoff_district_id: null }));
         return;
       }
 
       setLoadingDropoffDistricts(true);
       try {
-        const response = await fetch(`/api/districts?region_id=${formData.dropoff_region_id}`);
+        const response = await fetch(
+          `/api/districts?region_id=${formData.dropoff_region_id}`,
+        );
         if (response.ok) {
           const data = await response.json();
           setDropoffDistricts(data);
         }
       } catch (error) {
-        console.error('Error loading districts:', error);
+        console.error("Error loading districts:", error);
       } finally {
         setLoadingDropoffDistricts(false);
       }
@@ -244,9 +322,11 @@ export default function DeliveryForm({
     onSubmit(formData);
   }
 
-  const inputClass = "w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all";
+  const inputClass =
+    "w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all";
   const labelClass = "block text-sm font-medium text-gray-700 mb-1.5";
-  const sectionHeaderClass = "flex items-center gap-2 text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200";
+  const sectionHeaderClass =
+    "flex items-center gap-2 text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -259,7 +339,10 @@ export default function DeliveryForm({
       {loadError && (
         <div className="p-4 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg text-sm flex items-center gap-2">
           <AlertCircle className="w-4 h-4" />
-          <span>Google Maps failed to load. Address search and map features are unavailable. You can still enter addresses manually.</span>
+          <span>
+            Google Maps failed to load. Address search and map features are
+            unavailable. You can still enter addresses manually.
+          </span>
         </div>
       )}
 
@@ -280,7 +363,7 @@ export default function DeliveryForm({
             </span>
           </label>
           <select
-            value={formData.business_id || ''}
+            value={formData.business_id || ""}
             onChange={(e) => handleBusinessChange(e.target.value)}
             required
             disabled={loadingBusinesses}
@@ -322,17 +405,25 @@ export default function DeliveryForm({
               </span>
             )}
             <span className="lg:hidden">
-              {pickupCollapsed ? <ChevronDown className="w-5 h-5 text-gray-400" /> : <ChevronUp className="w-5 h-5 text-gray-400" />}
+              {pickupCollapsed ? (
+                <ChevronDown className="w-5 h-5 text-gray-400" />
+              ) : (
+                <ChevronUp className="w-5 h-5 text-gray-400" />
+              )}
             </span>
           </button>
-          
+
           {/* Collapsed Summary (mobile only) */}
           {pickupCollapsed && pickupPreFilled && (
             <div className="lg:hidden bg-green-100/50 rounded-lg p-3 mb-2 text-sm">
-              <p className="font-medium text-green-800">{formData.pickup_name}</p>
+              <p className="font-medium text-green-800">
+                {formData.pickup_name}
+              </p>
               <p className="text-green-700">{formData.pickup_phone}</p>
-              <p className="text-green-600 truncate">{formData.pickup_address || 'No address'}</p>
-              <button 
+              <p className="text-green-600 truncate">
+                {formData.pickup_address || "No address"}
+              </p>
+              <button
                 type="button"
                 onClick={() => setPickupCollapsed(false)}
                 className="text-green-700 underline text-xs mt-1"
@@ -341,8 +432,10 @@ export default function DeliveryForm({
               </button>
             </div>
           )}
-          
-          <div className={`space-y-4 ${pickupCollapsed ? 'hidden lg:block' : ''}`}>
+
+          <div
+            className={`space-y-4 ${pickupCollapsed ? "hidden lg:block" : ""}`}
+          >
             <div>
               <label className={labelClass}>
                 <span className="flex items-center gap-1.5">
@@ -353,13 +446,15 @@ export default function DeliveryForm({
               <input
                 type="text"
                 value={formData.pickup_name}
-                onChange={(e) => setFormData({ ...formData, pickup_name: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, pickup_name: e.target.value })
+                }
                 required
                 placeholder="Who to pick up from"
                 className={inputClass}
               />
             </div>
-            
+
             <div>
               <label className={labelClass}>
                 <span className="flex items-center gap-1.5">
@@ -370,28 +465,39 @@ export default function DeliveryForm({
               <input
                 type="tel"
                 value={formData.pickup_phone}
-                onChange={(e) => setFormData({ ...formData, pickup_phone: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, pickup_phone: e.target.value })
+                }
                 required
                 placeholder="+255..."
                 className={inputClass}
               />
             </div>
-            
+
             <div>
               {isLoaded ? (
                 <LocationPicker
                   label="Pickup Address *"
                   value={formData.pickup_address}
-                  onChange={(address, lat, lng) => 
-                    setFormData({ 
-                      ...formData, 
+                  onChange={(address, lat, lng) =>
+                    setFormData({
+                      ...formData,
                       pickup_address: address,
                       pickup_latitude: lat,
-                      pickup_longitude: lng
+                      pickup_longitude: lng,
                     })
                   }
-                  defaultLocation={formData.pickup_latitude && formData.pickup_longitude ? { lat: formData.pickup_latitude, lng: formData.pickup_longitude } : undefined}
-                  error={formData.pickup_address ? undefined : "Address is required"}
+                  defaultLocation={
+                    formData.pickup_latitude && formData.pickup_longitude
+                      ? {
+                          lat: formData.pickup_latitude,
+                          lng: formData.pickup_longitude,
+                        }
+                      : undefined
+                  }
+                  error={
+                    formData.pickup_address ? undefined : "Address is required"
+                  }
                 />
               ) : (
                 <>
@@ -404,7 +510,12 @@ export default function DeliveryForm({
                   <input
                     type="text"
                     value={formData.pickup_address}
-                    onChange={(e) => setFormData({ ...formData, pickup_address: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        pickup_address: e.target.value,
+                      })
+                    }
                     required
                     placeholder="Street address, building, etc."
                     className={inputClass}
@@ -412,13 +523,20 @@ export default function DeliveryForm({
                 </>
               )}
             </div>
-            
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelClass}>Region</label>
                 <select
-                  value={formData.pickup_region_id || ''}
-                  onChange={(e) => setFormData({ ...formData, pickup_region_id: e.target.value ? parseInt(e.target.value) : null })}
+                  value={formData.pickup_region_id || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      pickup_region_id: e.target.value
+                        ? parseInt(e.target.value)
+                        : null,
+                    })
+                  }
                   disabled={loadingRegions}
                   className={inputClass}
                 >
@@ -433,9 +551,18 @@ export default function DeliveryForm({
               <div>
                 <label className={labelClass}>District</label>
                 <select
-                  value={formData.pickup_district_id || ''}
-                  onChange={(e) => setFormData({ ...formData, pickup_district_id: e.target.value ? parseInt(e.target.value) : null })}
-                  disabled={!formData.pickup_region_id || loadingPickupDistricts}
+                  value={formData.pickup_district_id || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      pickup_district_id: e.target.value
+                        ? parseInt(e.target.value)
+                        : null,
+                    })
+                  }
+                  disabled={
+                    !formData.pickup_region_id || loadingPickupDistricts
+                  }
                   className={inputClass}
                 >
                   <option value="">Select district</option>
@@ -458,7 +585,7 @@ export default function DeliveryForm({
             </div>
             <span>Drop-off Details</span>
           </div>
-          
+
           <div className="space-y-4">
             <div>
               <label className={labelClass}>
@@ -470,13 +597,15 @@ export default function DeliveryForm({
               <input
                 type="text"
                 value={formData.dropoff_name}
-                onChange={(e) => setFormData({ ...formData, dropoff_name: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, dropoff_name: e.target.value })
+                }
                 required
                 placeholder="Who to deliver to"
                 className={inputClass}
               />
             </div>
-            
+
             <div>
               <label className={labelClass}>
                 <span className="flex items-center gap-1.5">
@@ -487,27 +616,31 @@ export default function DeliveryForm({
               <input
                 type="tel"
                 value={formData.dropoff_phone}
-                onChange={(e) => setFormData({ ...formData, dropoff_phone: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, dropoff_phone: e.target.value })
+                }
                 required
                 placeholder="+255..."
                 className={inputClass}
               />
             </div>
-            
+
             <div>
               {isLoaded ? (
                 <LocationPicker
                   label="Drop-off Address *"
                   value={formData.dropoff_address}
-                  onChange={(address, lat, lng) => 
-                    setFormData({ 
-                      ...formData, 
+                  onChange={(address, lat, lng) =>
+                    setFormData({
+                      ...formData,
                       dropoff_address: address,
                       dropoff_latitude: lat,
-                      dropoff_longitude: lng
+                      dropoff_longitude: lng,
                     })
                   }
-                  error={formData.dropoff_address ? undefined : "Address is required"}
+                  error={
+                    formData.dropoff_address ? undefined : "Address is required"
+                  }
                 />
               ) : (
                 <>
@@ -520,7 +653,12 @@ export default function DeliveryForm({
                   <input
                     type="text"
                     value={formData.dropoff_address}
-                    onChange={(e) => setFormData({ ...formData, dropoff_address: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        dropoff_address: e.target.value,
+                      })
+                    }
                     required
                     placeholder="Street address, building, etc."
                     className={inputClass}
@@ -528,13 +666,20 @@ export default function DeliveryForm({
                 </>
               )}
             </div>
-            
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelClass}>Region</label>
                 <select
-                  value={formData.dropoff_region_id || ''}
-                  onChange={(e) => setFormData({ ...formData, dropoff_region_id: e.target.value ? parseInt(e.target.value) : null })}
+                  value={formData.dropoff_region_id || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      dropoff_region_id: e.target.value
+                        ? parseInt(e.target.value)
+                        : null,
+                    })
+                  }
                   disabled={loadingRegions}
                   className={inputClass}
                 >
@@ -549,9 +694,18 @@ export default function DeliveryForm({
               <div>
                 <label className={labelClass}>District</label>
                 <select
-                  value={formData.dropoff_district_id || ''}
-                  onChange={(e) => setFormData({ ...formData, dropoff_district_id: e.target.value ? parseInt(e.target.value) : null })}
-                  disabled={!formData.dropoff_region_id || loadingDropoffDistricts}
+                  value={formData.dropoff_district_id || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      dropoff_district_id: e.target.value
+                        ? parseInt(e.target.value)
+                        : null,
+                    })
+                  }
+                  disabled={
+                    !formData.dropoff_region_id || loadingDropoffDistricts
+                  }
                   className={inputClass}
                 >
                   <option value="">Select district</option>
@@ -573,17 +727,59 @@ export default function DeliveryForm({
           <div className="p-2 bg-amber-100 rounded-lg">
             <Package className="w-5 h-5 text-amber-600" />
           </div>
-          <span>Special Instructions <span className="text-red-500">*</span></span>
+          <span>
+            Special Instructions <span className="text-red-500">*</span>
+          </span>
         </div>
         <textarea
           value={formData.package_description}
-          onChange={(e) => setFormData({ ...formData, package_description: e.target.value })}
+          onChange={(e) =>
+            setFormData({ ...formData, package_description: e.target.value })
+          }
           required
           rows={3}
           placeholder="Package details, handling instructions, delivery notes..."
           className={inputClass + " resize-none"}
         />
       </div>
+
+      {/* Delivery Fee - Only shown when showDeliveryFee is true */}
+      {showDeliveryFee && (
+        <div className="bg-purple-50/50 rounded-xl p-5 border border-purple-100">
+          <div className={sectionHeaderClass}>
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <DollarSign className="w-5 h-5 text-purple-600" />
+            </div>
+            <span>Delivery Fee</span>
+          </div>
+          <div>
+            <label className={labelClass}>
+              <span className="flex items-center gap-1.5">
+                <DollarSign className="w-4 h-4 text-gray-400" />
+                Fee Amount (TZS)
+              </span>
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="100"
+              value={formData.delivery_fee ?? 0}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  delivery_fee: e.target.value ? parseFloat(e.target.value) : 0,
+                })
+              }
+              placeholder="Enter delivery fee"
+              className={inputClass}
+            />
+            <p className="mt-1.5 text-xs text-gray-500">
+              Auto-filled from selected business package. You can adjust if
+              needed.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Action Buttons */}
       <div className="flex gap-3 pt-2">
@@ -593,7 +789,7 @@ export default function DeliveryForm({
           className="flex-1 bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium shadow-sm"
         >
           {loading && <Loader2 className="w-5 h-5 animate-spin" />}
-          {loading ? 'Creating Delivery...' : 'Create Delivery'}
+          {loading ? "Creating Delivery..." : "Create Delivery"}
         </button>
         {onCancel && (
           <button

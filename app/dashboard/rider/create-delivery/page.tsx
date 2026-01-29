@@ -99,6 +99,7 @@ export default function RiderCreateDeliveryPage() {
           loading={submitting}
           error={error}
           showBusinessSelector={true}
+          showDeliveryFee={true}
         />
       </div>
     </div>

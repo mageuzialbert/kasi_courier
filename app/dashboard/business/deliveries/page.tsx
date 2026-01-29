@@ -107,17 +107,48 @@ function BusinessDeliveriesContent() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Get business ID
-      const { data: business } = await supabase
+      // Get business with package info
+      const { data: business, error: businessError } = await supabase
         .from('businesses')
-        .select('id')
+        .select(`
+          id,
+          package_id,
+          delivery_fee,
+          delivery_fee_packages:package_id (
+            id,
+            fee_per_delivery
+          )
+        `)
         .eq('user_id', user.id)
         .single();
 
-      if (!business) throw new Error('Business not found');
+      if (businessError || !business) throw new Error('Business not found');
 
-      // Create delivery
-      const { error: createError } = await supabase
+      // Determine the delivery fee
+      let deliveryFee: number | null = null;
+      
+      if (business.delivery_fee) {
+        // Use business's custom delivery fee if set
+        deliveryFee = parseFloat(business.delivery_fee.toString());
+      } else if (business.delivery_fee_packages) {
+        // Use business's package fee
+        deliveryFee = parseFloat((business.delivery_fee_packages as { fee_per_delivery: number }).fee_per_delivery.toString());
+      } else {
+        // Fall back to default package
+        const { data: defaultPackage } = await supabase
+          .from('delivery_fee_packages')
+          .select('fee_per_delivery')
+          .eq('is_default', true)
+          .eq('active', true)
+          .single();
+        
+        if (defaultPackage) {
+          deliveryFee = parseFloat(defaultPackage.fee_per_delivery.toString());
+        }
+      }
+
+      // Create delivery with delivery_fee
+      const { data: deliveryData, error: createError } = await supabase
         .from('deliveries')
         .insert({
           business_id: business.id,
@@ -136,11 +167,26 @@ function BusinessDeliveriesContent() {
           dropoff_region_id: formData.dropoff_region_id,
           dropoff_district_id: formData.dropoff_district_id,
           package_description: formData.package_description || null,
+          delivery_fee: deliveryFee,
           status: 'CREATED',
           created_by: user.id,
-        });
+        })
+        .select('id')
+        .single();
 
       if (createError) throw createError;
+
+      // Create charge record for revenue tracking
+      if (deliveryData && deliveryFee && deliveryFee > 0) {
+        await supabase
+          .from('charges')
+          .insert({
+            delivery_id: deliveryData.id,
+            business_id: business.id,
+            amount: deliveryFee,
+            description: 'Delivery fee - Created by business',
+          });
+      }
 
       setShowCreateForm(false);
       loadDeliveries();
