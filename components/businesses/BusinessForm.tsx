@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useLoadScript } from '@react-google-maps/api';
-import { Loader2, AlertCircle } from 'lucide-react';
-import LocationPicker from '@/components/common/LocationPicker';
+import { useState, useEffect } from "react";
+import { useLoadScript } from "@react-google-maps/api";
+import { Loader2, AlertCircle } from "lucide-react";
+import LocationPicker from "@/components/common/LocationPicker";
 
 interface Business {
   id: string;
@@ -64,15 +64,15 @@ export default function BusinessForm({
   error,
 }: BusinessFormProps) {
   const isEditing = !!business;
-  
+
   const [formData, setFormData] = useState<BusinessFormData>({
-    name: business?.name || '',
-    email: '',
-    phone: business?.phone || '',
-    password: '',
-    delivery_fee: business?.delivery_fee?.toString() || '',
+    name: business?.name || "",
+    email: "",
+    phone: business?.phone || "",
+    password: "",
+    delivery_fee: business?.delivery_fee?.toString() || "",
     active: business?.active ?? true,
-    address: business?.address || '',
+    address: business?.address || "",
     latitude: business?.latitude || null,
     longitude: business?.longitude || null,
     district_id: business?.district_id || null,
@@ -85,21 +85,21 @@ export default function BusinessForm({
   const [loadingDistricts, setLoadingDistricts] = useState(false);
 
   const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
-    libraries: ['places'],
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+    libraries: ["places"],
   });
 
   // Load regions on mount
   useEffect(() => {
     async function loadRegions() {
       try {
-        const response = await fetch('/api/regions');
+        const response = await fetch("/api/regions");
         if (response.ok) {
           const data = await response.json();
           setRegions(data);
         }
       } catch (err) {
-        console.error('Error loading regions:', err);
+        console.error("Error loading regions:", err);
       } finally {
         setLoadingRegions(false);
       }
@@ -117,13 +117,15 @@ export default function BusinessForm({
 
       setLoadingDistricts(true);
       try {
-        const response = await fetch(`/api/districts?region_id=${selectedRegionId}`);
+        const response = await fetch(
+          `/api/districts?region_id=${selectedRegionId}`,
+        );
         if (response.ok) {
           const data = await response.json();
           setDistricts(data);
         }
       } catch (err) {
-        console.error('Error loading districts:', err);
+        console.error("Error loading districts:", err);
       } finally {
         setLoadingDistricts(false);
       }
@@ -139,13 +141,15 @@ export default function BusinessForm({
           const response = await fetch(`/api/districts?region_id=`);
           if (response.ok) {
             const allDistricts = await response.json();
-            const district = allDistricts.find((d: District) => d.id === business.district_id);
+            const district = allDistricts.find(
+              (d: District) => d.id === business.district_id,
+            );
             if (district) {
               setSelectedRegionId(district.region_id);
             }
           }
         } catch (err) {
-          console.error('Error loading district region:', err);
+          console.error("Error loading district region:", err);
         }
       }
     }
@@ -157,7 +161,11 @@ export default function BusinessForm({
     await onSubmit(formData);
   }
 
-  function handleLocationChange(address: string, lat: number | null, lng: number | null) {
+  function handleLocationChange(
+    address: string,
+    lat: number | null,
+    lng: number | null,
+  ) {
     setFormData({
       ...formData,
       address,
@@ -182,14 +190,16 @@ export default function BusinessForm({
       {loadError && (
         <div className="p-3 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg text-sm flex items-center gap-2">
           <AlertCircle className="w-4 h-4" />
-          <span>Google Maps failed to load. You can still enter addresses manually.</span>
+          <span>
+            Google Maps failed to load. You can still enter addresses manually.
+          </span>
         </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Business Name *
+            Client Name *
           </label>
           <input
             type="text"
@@ -207,7 +217,9 @@ export default function BusinessForm({
           <input
             type="tel"
             value={formData.phone}
-            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, phone: e.target.value })
+            }
             required
             placeholder="+255759561311"
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
@@ -224,9 +236,11 @@ export default function BusinessForm({
               <input
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
                 required
-                placeholder="business@example.com"
+                placeholder="client@example.com"
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
               />
               <p className="mt-1 text-xs text-gray-500">Used for login</p>
@@ -239,7 +253,9 @@ export default function BusinessForm({
               <input
                 type="password"
                 value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, password: e.target.value })
+                }
                 required
                 minLength={6}
                 placeholder="Minimum 6 characters"
@@ -256,13 +272,17 @@ export default function BusinessForm({
           <input
             type="number"
             value={formData.delivery_fee}
-            onChange={(e) => setFormData({ ...formData, delivery_fee: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, delivery_fee: e.target.value })
+            }
             step="0.01"
             min="0"
             placeholder="0.00"
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
           />
-          <p className="mt-1 text-xs text-gray-500">Leave empty to use default pricing</p>
+          <p className="mt-1 text-xs text-gray-500">
+            Leave empty to use default pricing
+          </p>
         </div>
 
         <div className="flex items-center gap-2 pt-6">
@@ -270,7 +290,9 @@ export default function BusinessForm({
             type="checkbox"
             id="active"
             checked={formData.active}
-            onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+            onChange={(e) =>
+              setFormData({ ...formData, active: e.target.checked })
+            }
             className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
           />
           <label htmlFor="active" className="text-sm font-medium text-gray-700">
@@ -281,8 +303,10 @@ export default function BusinessForm({
 
       {/* Location Section */}
       <div className="border-t pt-4 mt-4">
-        <h3 className="text-md font-semibold text-gray-800 mb-3">Business Location</h3>
-        
+        <h3 className="text-md font-semibold text-gray-800 mb-3">
+          Business Location
+        </h3>
+
         {/* Address with Google Maps */}
         <div className="mb-4">
           {isLoaded ? (
@@ -290,7 +314,11 @@ export default function BusinessForm({
               label="Business Address"
               value={formData.address}
               onChange={handleLocationChange}
-              defaultLocation={formData.latitude && formData.longitude ? { lat: formData.latitude, lng: formData.longitude } : undefined}
+              defaultLocation={
+                formData.latitude && formData.longitude
+                  ? { lat: formData.latitude, lng: formData.longitude }
+                  : undefined
+              }
             />
           ) : loadError ? (
             <div>
@@ -300,7 +328,9 @@ export default function BusinessForm({
               <input
                 type="text"
                 value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, address: e.target.value })
+                }
                 placeholder="Enter business address"
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
               />
@@ -308,7 +338,9 @@ export default function BusinessForm({
           ) : (
             <div className="flex items-center justify-center p-4">
               <Loader2 className="w-5 h-5 animate-spin text-primary" />
-              <span className="ml-2 text-gray-500 text-sm">Loading maps...</span>
+              <span className="ml-2 text-gray-500 text-sm">
+                Loading maps...
+              </span>
             </div>
           )}
         </div>
@@ -320,8 +352,12 @@ export default function BusinessForm({
               Region
             </label>
             <select
-              value={selectedRegionId || ''}
-              onChange={(e) => handleRegionChange(e.target.value ? parseInt(e.target.value) : null)}
+              value={selectedRegionId || ""}
+              onChange={(e) =>
+                handleRegionChange(
+                  e.target.value ? parseInt(e.target.value) : null,
+                )
+              }
               disabled={loadingRegions}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-gray-100"
             >
@@ -339,8 +375,13 @@ export default function BusinessForm({
               District
             </label>
             <select
-              value={formData.district_id || ''}
-              onChange={(e) => setFormData({ ...formData, district_id: e.target.value ? parseInt(e.target.value) : null })}
+              value={formData.district_id || ""}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  district_id: e.target.value ? parseInt(e.target.value) : null,
+                })
+              }
               disabled={!selectedRegionId || loadingDistricts}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-gray-100"
             >
@@ -352,7 +393,9 @@ export default function BusinessForm({
               ))}
             </select>
             {!selectedRegionId && (
-              <p className="mt-1 text-xs text-gray-500">Select a region first</p>
+              <p className="mt-1 text-xs text-gray-500">
+                Select a region first
+              </p>
             )}
           </div>
         </div>
@@ -365,7 +408,11 @@ export default function BusinessForm({
           className="flex-1 bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-          {loading ? 'Saving...' : isEditing ? 'Update Business' : 'Create Business'}
+          {loading
+            ? "Saving..."
+            : isEditing
+              ? "Update Client"
+              : "Create Client"}
         </button>
         <button
           type="button"

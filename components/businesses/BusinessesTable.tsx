@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { Building2, Edit, Eye, Power, DollarSign } from 'lucide-react';
+import { Building2, Edit, Eye, Power, DollarSign } from "lucide-react";
 
 interface Business {
   id: string;
@@ -33,18 +33,18 @@ export default function BusinessesTable({
   showActions = true,
 }: BusinessesTableProps) {
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   };
 
   const formatCurrency = (amount: number | null): string => {
-    if (amount === null) return 'Not set';
-    return new Intl.NumberFormat('en-TZ', {
-      style: 'currency',
-      currency: 'TZS',
+    if (amount === null) return "Not set";
+    return new Intl.NumberFormat("en-TZ", {
+      style: "currency",
+      currency: "TZS",
       minimumFractionDigits: 0,
     }).format(amount);
   };
@@ -56,7 +56,7 @@ export default function BusinessesTable({
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Business
+                Client
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Contact
@@ -84,7 +84,7 @@ export default function BusinessesTable({
                   colSpan={showActions ? 6 : 5}
                   className="px-6 py-4 text-center text-gray-500"
                 >
-                  No businesses found
+                  No clients found
                 </td>
               </tr>
             ) : (
@@ -96,17 +96,25 @@ export default function BusinessesTable({
                         <Building2 className="w-5 h-5 text-primary" />
                       </div>
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{business.name}</div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {business.name}
+                        </div>
                         {business.user && (
-                          <div className="text-sm text-gray-500">{business.user.name}</div>
+                          <div className="text-sm text-gray-500">
+                            {business.user.name}
+                          </div>
                         )}
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{business.phone}</div>
+                    <div className="text-sm text-gray-900">
+                      {business.phone}
+                    </div>
                     {business.user && (
-                      <div className="text-sm text-gray-500">{business.user.phone}</div>
+                      <div className="text-sm text-gray-500">
+                        {business.user.phone}
+                      </div>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -121,11 +129,11 @@ export default function BusinessesTable({
                     <span
                       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         business.active
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-800'
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-800"
                       }`}
                     >
-                      {business.active ? 'Active' : 'Inactive'}
+                      {business.active ? "Active" : "Inactive"}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -147,7 +155,7 @@ export default function BusinessesTable({
                           <button
                             onClick={() => onEdit(business)}
                             className="text-primary hover:text-primary-dark"
-                            title="Edit business"
+                            title="Edit client"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
@@ -155,8 +163,16 @@ export default function BusinessesTable({
                         {onToggleActive && (
                           <button
                             onClick={() => onToggleActive(business)}
-                            className={business.active ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'}
-                            title={business.active ? 'Disable business' : 'Enable business'}
+                            className={
+                              business.active
+                                ? "text-red-600 hover:text-red-900"
+                                : "text-green-600 hover:text-green-900"
+                            }
+                            title={
+                              business.active
+                                ? "Disable client"
+                                : "Enable client"
+                            }
                           >
                             <Power className="w-4 h-4" />
                           </button>

@@ -1,17 +1,30 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import Link from 'next/link';
-import { 
-  LayoutDashboard, Package, Receipt, LogOut, Loader2, User, Shield, 
-  FileText, BarChart3, Image, Menu, X, Building2, Settings, CreditCard,
-  FolderOpen
-} from 'lucide-react';
-import { getCurrentUser, logout } from '@/lib/auth';
-import { getUserRole } from '@/lib/roles';
-import { PermissionsProvider, usePermissions } from '@/lib/permissions-context';
-import VerificationBanner from './business/components/VerificationBanner';
+import { useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
+import {
+  LayoutDashboard,
+  Package,
+  Receipt,
+  LogOut,
+  Loader2,
+  User,
+  Shield,
+  FileText,
+  BarChart3,
+  Image,
+  Menu,
+  X,
+  Building2,
+  Settings,
+  CreditCard,
+  FolderOpen,
+} from "lucide-react";
+import { getCurrentUser, logout } from "@/lib/auth";
+import { getUserRole } from "@/lib/roles";
+import { PermissionsProvider, usePermissions } from "@/lib/permissions-context";
+import VerificationBanner from "./business/components/VerificationBanner";
 
 // Navigation item interface with permission requirements
 interface NavItem {
@@ -29,20 +42,25 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  
-  const { hasPermission, hasModuleAccess, hasAnyPermission, loading: permissionsLoading } = usePermissions();
+
+  const {
+    hasPermission,
+    hasModuleAccess,
+    hasAnyPermission,
+    loading: permissionsLoading,
+  } = usePermissions();
 
   useEffect(() => {
     async function checkAuth() {
       const currentUser = await getCurrentUser();
       if (!currentUser) {
-        router.push('/login');
+        router.push("/login");
         return;
       }
 
       const userRole = await getUserRole();
       if (!userRole) {
-        router.push('/login');
+        router.push("/login");
         return;
       }
 
@@ -56,7 +74,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
   const handleLogout = async () => {
     await logout();
-    router.push('/login');
+    router.push("/login");
   };
 
   if (loading || permissionsLoading) {
@@ -73,142 +91,154 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   // Get base dashboard path based on role
   const getDashboardBase = () => {
     switch (role) {
-      case 'BUSINESS':
-        return '/dashboard/business';
-      case 'STAFF':
-        return '/dashboard/staff';
-      case 'RIDER':
-        return '/dashboard/rider';
-      case 'ADMIN':
-        return '/dashboard/admin';
+      case "BUSINESS":
+        return "/dashboard/business";
+      case "STAFF":
+        return "/dashboard/staff";
+      case "RIDER":
+        return "/dashboard/rider";
+      case "ADMIN":
+        return "/dashboard/admin";
       default:
-        return '/dashboard';
+        return "/dashboard";
     }
   };
 
   const businessNavItems: NavItem[] = [
-    { href: '/dashboard/business', label: 'Overview', icon: LayoutDashboard },
-    { href: '/dashboard/business/deliveries', label: 'Deliveries', icon: Package },
-    { href: '/dashboard/business/invoices', label: 'Invoices', icon: Receipt },
-    { href: '/dashboard/business/profile', label: 'Profile', icon: User },
-    { href: '/dashboard/business/verify', label: 'Verify', icon: Shield },
+    { href: "/dashboard/business", label: "Overview", icon: LayoutDashboard },
+    {
+      href: "/dashboard/business/deliveries",
+      label: "Deliveries",
+      icon: Package,
+    },
+    { href: "/dashboard/business/invoices", label: "Invoices", icon: Receipt },
+    { href: "/dashboard/business/profile", label: "Profile", icon: User },
+    { href: "/dashboard/business/verify", label: "Verify", icon: Shield },
   ];
 
   // Admin has access to all items - no permission filtering needed
   const adminNavItems: NavItem[] = [
-    { href: '/dashboard/admin', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/dashboard/admin/businesses', label: 'Businesses', icon: Building2 },
-    { href: '/dashboard/admin/users', label: 'Users', icon: User },
-    { href: '/dashboard/staff/deliveries', label: 'Deliveries', icon: Package },
-    { href: '/dashboard/staff/operations', label: 'Operations', icon: BarChart3 },
-    { href: '/dashboard/staff/financial', label: 'Financial', icon: Receipt },
-    { href: '/dashboard/admin/cms/sliders', label: 'CMS Sliders', icon: Image },
-    { href: '/dashboard/admin/cms/content', label: 'CMS Content', icon: FileText },
+    { href: "/dashboard/admin", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/dashboard/admin/businesses", label: "Clients", icon: Building2 },
+    { href: "/dashboard/admin/users", label: "Users", icon: User },
+    { href: "/dashboard/staff/deliveries", label: "Deliveries", icon: Package },
+    {
+      href: "/dashboard/staff/operations",
+      label: "Operations",
+      icon: BarChart3,
+    },
+    { href: "/dashboard/staff/financial", label: "Financial", icon: Receipt },
+    { href: "/dashboard/admin/cms/sliders", label: "CMS Sliders", icon: Image },
+    {
+      href: "/dashboard/admin/cms/content",
+      label: "CMS Content",
+      icon: FileText,
+    },
   ];
 
   // Staff nav items with permission requirements
   const staffNavItems: NavItem[] = [
-    { href: '/dashboard/staff', label: 'Dashboard', icon: LayoutDashboard },
-    { 
-      href: '/dashboard/staff/deliveries', 
-      label: 'Deliveries', 
+    { href: "/dashboard/staff", label: "Dashboard", icon: LayoutDashboard },
+    {
+      href: "/dashboard/staff/deliveries",
+      label: "Deliveries",
       icon: Package,
-      modules: ['deliveries'],
+      modules: ["deliveries"],
     },
-    { 
-      href: '/dashboard/admin/businesses', 
-      label: 'Businesses', 
+    {
+      href: "/dashboard/admin/businesses",
+      label: "Clients",
       icon: Building2,
-      modules: ['businesses'],
+      modules: ["businesses"],
     },
-    { 
-      href: '/dashboard/admin/users', 
-      label: 'Users', 
+    {
+      href: "/dashboard/admin/users",
+      label: "Users",
       icon: User,
-      modules: ['users'],
+      modules: ["users"],
     },
-    { 
-      href: '/dashboard/staff/operations', 
-      label: 'Operations', 
+    {
+      href: "/dashboard/staff/operations",
+      label: "Operations",
       icon: BarChart3,
-      modules: ['operations'],
+      modules: ["operations"],
     },
-    { 
-      href: '/dashboard/staff/financial', 
-      label: 'Financial', 
+    {
+      href: "/dashboard/staff/financial",
+      label: "Financial",
       icon: Receipt,
-      modules: ['financial'],
+      modules: ["financial"],
     },
-    { 
-      href: '/dashboard/admin/invoices', 
-      label: 'Invoices', 
+    {
+      href: "/dashboard/admin/invoices",
+      label: "Invoices",
       icon: FileText,
-      modules: ['invoices'],
+      modules: ["invoices"],
     },
-    { 
-      href: '/dashboard/admin/expenses', 
-      label: 'Expenses', 
+    {
+      href: "/dashboard/admin/expenses",
+      label: "Expenses",
       icon: BarChart3,
-      modules: ['expenses'],
+      modules: ["expenses"],
     },
-    { 
-      href: '/dashboard/admin/delivery-packages', 
-      label: 'Packages', 
+    {
+      href: "/dashboard/admin/delivery-packages",
+      label: "Packages",
       icon: FolderOpen,
-      modules: ['delivery_packages'],
+      modules: ["delivery_packages"],
     },
-    { 
-      href: '/dashboard/admin/cms/sliders', 
-      label: 'CMS Sliders', 
+    {
+      href: "/dashboard/admin/cms/sliders",
+      label: "CMS Sliders",
       icon: Image,
-      modules: ['cms_sliders'],
+      modules: ["cms_sliders"],
     },
-    { 
-      href: '/dashboard/admin/cms/content', 
-      label: 'CMS Content', 
+    {
+      href: "/dashboard/admin/cms/content",
+      label: "CMS Content",
       icon: FileText,
-      modules: ['cms_content'],
+      modules: ["cms_content"],
     },
-    { 
-      href: '/dashboard/admin/company-profile', 
-      label: 'Company', 
+    {
+      href: "/dashboard/admin/company-profile",
+      label: "Company",
       icon: Settings,
-      modules: ['company_profile'],
+      modules: ["company_profile"],
     },
-    { 
-      href: '/dashboard/admin/payment-instructions', 
-      label: 'Payments', 
+    {
+      href: "/dashboard/admin/payment-instructions",
+      label: "Payments",
       icon: CreditCard,
-      modules: ['payment_instructions'],
+      modules: ["payment_instructions"],
     },
   ];
 
   // Rider nav items with permission requirements
   const riderNavItems: NavItem[] = [
-    { href: '/dashboard/rider', label: 'Dashboard', icon: LayoutDashboard },
-    { 
-      href: '/dashboard/rider/jobs', 
-      label: 'My Jobs', 
+    { href: "/dashboard/rider", label: "Dashboard", icon: LayoutDashboard },
+    {
+      href: "/dashboard/rider/jobs",
+      label: "My Jobs",
       icon: Package,
-      permissions: ['deliveries.view_assigned'],
+      permissions: ["deliveries.view_assigned"],
     },
-    { 
-      href: '/dashboard/rider/create-delivery', 
-      label: 'Create Delivery', 
+    {
+      href: "/dashboard/rider/create-delivery",
+      label: "Create Delivery",
       icon: Package,
-      permissions: ['deliveries.create'],
+      permissions: ["deliveries.create"],
     },
-    { 
-      href: '/dashboard/rider/register-business', 
-      label: 'Register Business', 
+    {
+      href: "/dashboard/rider/register-business",
+      label: "Register Business",
       icon: Building2,
-      permissions: ['businesses.create'],
+      permissions: ["businesses.create"],
     },
   ];
 
   // Filter nav items based on permissions
   const filterNavItems = (items: NavItem[]): NavItem[] => {
-    return items.filter(item => {
+    return items.filter((item) => {
       // Always show items without permission requirements
       if (!item.permissions && !item.modules) return true;
 
@@ -229,10 +259,10 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   };
 
   const getNavItems = (): NavItem[] => {
-    if (role === 'BUSINESS') return businessNavItems;
-    if (role === 'ADMIN') return adminNavItems;
-    if (role === 'STAFF') return filterNavItems(staffNavItems);
-    if (role === 'RIDER') return filterNavItems(riderNavItems);
+    if (role === "BUSINESS") return businessNavItems;
+    if (role === "ADMIN") return adminNavItems;
+    if (role === "STAFF") return filterNavItems(staffNavItems);
+    if (role === "RIDER") return filterNavItems(riderNavItems);
     return [];
   };
 
@@ -260,7 +290,9 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
                 </button>
               )}
               <Link href={getDashboardBase()} className="flex items-center">
-                <span className="text-2xl font-bold text-primary">Kasi Courier</span>
+                <span className="text-2xl font-bold text-primary">
+                  Kasi Courier
+                </span>
               </Link>
             </div>
             <div className="flex items-center space-x-4">
@@ -279,7 +311,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         </div>
       </nav>
 
-      <div className="flex relative">
+      <div className="flex relative overflow-hidden">
         {/* Mobile Overlay */}
         {sidebarOpen && (
           <div
@@ -298,7 +330,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
               min-h-[calc(100vh-4rem)] lg:min-h-[calc(100vh-4rem)]
               z-50 lg:z-auto
               transform transition-transform duration-300 ease-in-out
-              ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+              ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
             `}
           >
             <nav className="p-4 space-y-2">
@@ -311,8 +343,8 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
                     onClick={() => setSidebarOpen(false)}
                     className={`flex items-center space-x-3 px-4 py-3 rounded-md transition-colors ${
                       isActive
-                        ? 'bg-primary text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        ? "bg-primary text-white"
+                        : "text-gray-700 hover:bg-gray-100"
                     }`}
                   >
                     <item.icon className="w-5 h-5" />
@@ -325,8 +357,8 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         )}
 
         {/* Main Content */}
-        <main className="flex-1 p-6 w-full lg:w-auto">
-          {role === 'BUSINESS' && <VerificationBanner />}
+        <main className="flex-1 p-6 w-full lg:w-auto min-w-0 overflow-x-auto">
+          {role === "BUSINESS" && <VerificationBanner />}
           {children}
         </main>
       </div>

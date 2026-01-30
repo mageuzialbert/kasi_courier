@@ -125,14 +125,14 @@ export default function DeliveriesTable({
   };
 
   return (
-    <div>
+    <div className="w-full min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Filter className="w-5 h-5 text-gray-500" />
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+          <Filter className="w-5 h-5 text-gray-500 hidden sm:block" />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
+            className="px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
           >
             <option value="ALL">All Statuses</option>
             <option value="CREATED">Created</option>
@@ -146,22 +146,22 @@ export default function DeliveriesTable({
           </select>
 
           {onExport && (
-            <div className="flex items-center gap-2 ml-4">
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => onExport("csv")}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors"
+                className="flex items-center gap-1.5 px-2 sm:px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors"
                 title="Export to CSV"
               >
                 <Download className="w-4 h-4" />
-                CSV
+                <span className="hidden sm:inline">CSV</span>
               </button>
               <button
                 onClick={() => onExport("excel")}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm bg-green-100 hover:bg-green-200 text-green-700 rounded-md transition-colors"
+                className="flex items-center gap-1.5 px-2 sm:px-3 py-2 text-sm bg-green-100 hover:bg-green-200 text-green-700 rounded-md transition-colors"
                 title="Export to Excel"
               >
                 <FileSpreadsheet className="w-4 h-4" />
-                Excel
+                <span className="hidden sm:inline">Excel</span>
               </button>
             </div>
           )}
@@ -176,9 +176,11 @@ export default function DeliveriesTable({
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         {/* Pagination controls - Top */}
         {hasPagination && (
-          <div className="px-6 py-3 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+          <div className="px-3 sm:px-6 py-3 border-b border-gray-200 flex flex-wrap items-center justify-between gap-2 sm:gap-4 bg-gray-50">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">Rows per page:</span>
+              <span className="text-xs sm:text-sm text-gray-600">
+                Rows per page:
+              </span>
               <select
                 value={pageSize}
                 onChange={(e) => onPageSizeChange?.(parseInt(e.target.value))}
@@ -190,8 +192,8 @@ export default function DeliveriesTable({
                 <option value={100}>100</option>
               </select>
             </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">
+            <div className="flex items-center gap-2 sm:gap-4">
+              <span className="text-xs sm:text-sm text-gray-600">
                 Page {page} of {totalPages}
               </span>
               <div className="flex items-center gap-1">
@@ -222,7 +224,7 @@ export default function DeliveriesTable({
               <tr>
                 {showBusiness && (
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Business
+                    Client
                   </th>
                 )}
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">

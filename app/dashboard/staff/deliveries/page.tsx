@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Plus, X, Loader2 } from "lucide-react";
+import { Plus, X, Loader2, RefreshCw } from "lucide-react";
 import { getUserRole } from "@/lib/roles";
 import DeliveriesTable from "@/components/deliveries/DeliveriesTable";
 import DeliveryForm, {
@@ -192,6 +192,8 @@ export default function StaffDeliveriesPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
+        // Always reload to show fresh state after error
+        await loadDeliveries();
         throw new Error(errorData.error || "Failed to confirm delivery");
       }
 
@@ -226,6 +228,8 @@ export default function StaffDeliveriesPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
+        // Always reload to show fresh state after error
+        await loadDeliveries();
         throw new Error(errorData.error || "Failed to reject delivery");
       }
 
@@ -378,16 +382,29 @@ export default function StaffDeliveriesPage() {
   }
 
   return (
-    <div>
+    <div className="w-full min-w-0">
       {error && !showCreateForm && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
-          {error}
-          <button
-            onClick={() => setError("")}
-            className="ml-2 text-red-500 hover:text-red-700"
-          >
-            Dismiss
-          </button>
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-start justify-between gap-4">
+          <span className="flex-1">{error}</span>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={() => {
+                setError("");
+                loadDeliveries();
+              }}
+              className="flex items-center gap-1 text-red-600 hover:text-red-800 font-medium"
+              title="Refresh deliveries list"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Refresh
+            </button>
+            <button
+              onClick={() => setError("")}
+              className="text-red-500 hover:text-red-700"
+            >
+              Dismiss
+            </button>
+          </div>
         </div>
       )}
 
