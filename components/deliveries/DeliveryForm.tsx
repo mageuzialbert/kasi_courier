@@ -14,6 +14,7 @@ import {
   Building2,
   Check,
   DollarSign,
+  Calendar,
 } from "lucide-react";
 import LocationPicker from "@/components/common/LocationPicker";
 
@@ -72,6 +73,7 @@ export interface DeliveryFormData {
   dropoff_district_id: number | null;
   package_description: string;
   delivery_fee?: number;
+  created_at?: string;
 }
 
 export default function DeliveryForm({
@@ -100,6 +102,14 @@ export default function DeliveryForm({
     libraries: ["places"],
   });
 
+  // Get current datetime in local timezone for the default created_at value
+  const getCurrentLocalDatetime = () => {
+    const now = new Date();
+    const offset = now.getTimezoneOffset();
+    const localDate = new Date(now.getTime() - offset * 60 * 1000);
+    return localDate.toISOString().slice(0, 16);
+  };
+
   const [formData, setFormData] = useState<DeliveryFormData>({
     business_id: businessId || undefined,
     pickup_address: "",
@@ -118,6 +128,7 @@ export default function DeliveryForm({
     dropoff_district_id: null,
     package_description: "",
     delivery_fee: 0,
+    created_at: getCurrentLocalDatetime(),
   });
 
   // Auto-populate pickup when business is selected
@@ -776,6 +787,40 @@ export default function DeliveryForm({
             <p className="mt-1.5 text-xs text-gray-500">
               Auto-filled from selected business package. You can adjust if
               needed.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Created Date/Time - Only shown when showDeliveryFee is true (staff form) */}
+      {showDeliveryFee && (
+        <div className="bg-gray-50/50 rounded-xl p-5 border border-gray-200">
+          <div className={sectionHeaderClass}>
+            <div className="p-2 bg-gray-100 rounded-lg">
+              <Calendar className="w-5 h-5 text-gray-600" />
+            </div>
+            <span>Delivery Date & Time</span>
+          </div>
+          <div>
+            <label className={labelClass}>
+              <span className="flex items-center gap-1.5">
+                <Calendar className="w-4 h-4 text-gray-400" />
+                When was this delivery done?
+              </span>
+            </label>
+            <input
+              type="datetime-local"
+              value={formData.created_at || ''}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  created_at: e.target.value,
+                })
+              }
+              className={inputClass}
+            />
+            <p className="mt-1.5 text-xs text-gray-500">
+              Defaults to current date/time. Adjust if the delivery was already completed.
             </p>
           </div>
         </div>

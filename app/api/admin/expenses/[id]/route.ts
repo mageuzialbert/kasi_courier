@@ -16,7 +16,7 @@ export async function PUT(
       );
     }
 
-    const { category_id, amount, description, expense_date } = await request.json();
+    const { category_id, amount, description, supplier, expense_date } = await request.json();
 
     // Build update object
     const updates: any = {};
@@ -32,6 +32,7 @@ export async function PUT(
       updates.amount = expenseAmount;
     }
     if (description !== undefined) updates.description = description;
+    if (supplier !== undefined) updates.supplier = supplier;
     if (expense_date !== undefined) updates.expense_date = expense_date;
 
     const { data: updatedExpense, error } = await supabaseAdmin

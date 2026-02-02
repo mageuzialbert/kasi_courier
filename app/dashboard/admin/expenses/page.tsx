@@ -10,6 +10,7 @@ interface Expense {
   category_id: string;
   amount: number;
   description: string | null;
+  supplier: string | null;
   expense_date: string;
   created_by: string;
   created_at: string;
@@ -33,6 +34,7 @@ interface ExpenseFormData {
   category_id: string;
   amount: string;
   description: string;
+  supplier: string;
   expense_date: string;
 }
 
@@ -56,6 +58,7 @@ export default function AdminExpensesPage() {
     category_id: '',
     amount: '',
     description: '',
+    supplier: '',
     expense_date: new Date().toISOString().split('T')[0],
   });
 
@@ -118,6 +121,7 @@ export default function AdminExpensesPage() {
       category_id: '',
       amount: '',
       description: '',
+      supplier: '',
       expense_date: new Date().toISOString().split('T')[0],
     });
     setError('');
@@ -130,6 +134,7 @@ export default function AdminExpensesPage() {
       category_id: expense.category_id,
       amount: expense.amount.toString(),
       description: expense.description || '',
+      supplier: expense.supplier || '',
       expense_date: expense.expense_date,
     });
     setError('');
@@ -163,6 +168,7 @@ export default function AdminExpensesPage() {
           category_id: formData.category_id,
           amount: amount,
           description: formData.description || null,
+          supplier: formData.supplier || null,
           expense_date: formData.expense_date,
         }),
       });
@@ -325,6 +331,9 @@ export default function AdminExpensesPage() {
                 Description
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Supplier
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Amount
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -338,7 +347,7 @@ export default function AdminExpensesPage() {
           <tbody className="bg-white divide-y divide-gray-200">
             {expenses.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                   No expenses found
                 </td>
               </tr>
@@ -355,6 +364,9 @@ export default function AdminExpensesPage() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-500">{expense.description || '-'}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-500">{expense.supplier || '-'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
@@ -447,6 +459,19 @@ export default function AdminExpensesPage() {
                   rows={3}
                   className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
                   placeholder="Optional description"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Supplier
+                </label>
+                <input
+                  type="text"
+                  value={formData.supplier}
+                  onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
+                  placeholder="Where was this purchased? (e.g., Shell Station, Office Depot)"
                 />
               </div>
 

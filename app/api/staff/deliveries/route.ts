@@ -169,6 +169,7 @@ export async function POST(request: NextRequest) {
       dropoff_longitude,
       package_description,
       delivery_fee: providedDeliveryFee,
+      created_at: providedCreatedAt,
     } = await request.json();
 
     // Validation
@@ -287,6 +288,7 @@ export async function POST(request: NextRequest) {
         status: deliveryStatus,
         assigned_rider_id: assignedRiderId,
         created_by: user.id,
+        ...(providedCreatedAt ? { created_at: new Date(providedCreatedAt).toISOString() } : {}),
       })
       .select()
       .single();

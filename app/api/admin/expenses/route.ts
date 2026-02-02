@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { category_id, amount, description, expense_date } = await request.json();
+    const { category_id, amount, description, supplier, expense_date } = await request.json();
 
     // Validation
     if (!category_id) {
@@ -131,6 +131,7 @@ export async function POST(request: NextRequest) {
         category_id,
         amount: expenseAmount,
         description: description || null,
+        supplier: supplier || null,
         expense_date: expense_date || new Date().toISOString().split('T')[0],
         created_by: user.id,
       })
