@@ -110,7 +110,7 @@ export default function StaffDeliveriesPage() {
 
   async function handleCreateDelivery(data: DeliveryFormData) {
     if (!data.business_id) {
-      setError("Please select a business");
+      setError("Please select a client");
       return;
     }
 
@@ -321,10 +321,9 @@ export default function StaffDeliveriesPage() {
   }
 
   function handleExport(format: "csv" | "excel") {
-    // Build CSV content
     const headers = [
       "ID",
-      "Business",
+      "Client",
       "Pickup Name",
       "Pickup Address",
       "Pickup Phone",
@@ -352,21 +351,69 @@ export default function StaffDeliveriesPage() {
       new Date(d.created_at).toLocaleString(),
     ]);
 
-    const csvContent = [
-      headers.join(","),
-      ...rows.map((row) =>
-        row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","),
-      ),
-    ].join("\n");
+    const downloadDate = new Date().toISOString().split("T")[0];
+    let blob: Blob;
+    let extension: "csv" | "xls";
 
-    // Create download
-    const blob = new Blob([csvContent], {
-      type: format === "excel" ? "application/vnd.ms-excel" : "text/csv",
-    });
+    if (format === "csv") {
+      const csvContent = [
+        headers.join(","),
+        ...rows.map((row) =>
+          row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","),
+        ),
+      ].join("\n");
+
+      blob = new Blob(["\ufeff", csvContent], {
+        type: "text/csv;charset=utf-8",
+      });
+      extension = "csv";
+    } else {
+      const escapeHtml = (value: string) =>
+        value
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/\"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+
+      const headerHtml = headers
+        .map((header) => `<th>${escapeHtml(header)}</th>`)
+        .join("");
+      const rowsHtml = rows
+        .map(
+          (row) =>
+            `<tr>${row
+              .map(
+                (cell) =>
+                  `<td style="mso-number-format:'\\@';">${escapeHtml(String(cell))}</td>`,
+              )
+              .join("")}</tr>`,
+        )
+        .join("");
+
+      const excelContent = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <table border="1">
+      <thead><tr>${headerHtml}</tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>
+  </body>
+</html>`;
+
+      blob = new Blob(["\ufeff", excelContent], {
+        type: "application/vnd.ms-excel;charset=utf-8",
+      });
+      extension = "xls";
+    }
+
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `deliveries-${new Date().toISOString().split("T")[0]}.${format === "excel" ? "xls" : "csv"}`;
+    a.download = `deliveries-${downloadDate}.${extension}`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

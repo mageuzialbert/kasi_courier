@@ -40,7 +40,7 @@ export default function AdminBusinessesPage() {
   const [loading, setLoading] = useState(true);
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [statusFilter, setStatusFilter] = useState<string>("ACTIVE");
   const [showForm, setShowForm] = useState(false);
   const [editingBusiness, setEditingBusiness] = useState<Business | null>(null);
   const [viewingBusiness, setViewingBusiness] = useState<Business | null>(null);
@@ -95,8 +95,8 @@ export default function AdminBusinessesPage() {
         params.set("search", searchQuery.trim());
       }
 
-      if (statusFilter !== "ALL") {
-        params.set("active", statusFilter === "ACTIVE" ? "true" : "false");
+      if (statusFilter === "ACTIVE") {
+        params.set("active", "true");
       }
 
       const url = `/api/admin/businesses?${params.toString()}`;
@@ -152,7 +152,7 @@ export default function AdminBusinessesPage() {
 
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(errorData.error || "Failed to update business");
+          throw new Error(errorData.error || "Failed to update client");
         }
       } else {
         // Create new business
@@ -183,7 +183,7 @@ export default function AdminBusinessesPage() {
 
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(errorData.error || "Failed to create business");
+          throw new Error(errorData.error || "Failed to create client");
         }
       }
 
@@ -191,7 +191,7 @@ export default function AdminBusinessesPage() {
       setEditingBusiness(null);
       loadBusinesses();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save business");
+      setError(err instanceof Error ? err.message : "Failed to save client");
     } finally {
       setSubmitting(false);
     }
@@ -243,7 +243,7 @@ export default function AdminBusinessesPage() {
 
   function clearFilters() {
     setSearchQuery("");
-    setStatusFilter("ALL");
+    setStatusFilter("ACTIVE");
   }
 
   if (loading && businesses.length === 0) {
@@ -295,14 +295,12 @@ export default function AdminBusinessesPage() {
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
               >
-                <option value="ALL">All Statuses</option>
                 <option value="ACTIVE">Active</option>
-                <option value="INACTIVE">Inactive</option>
               </select>
             </div>
 
             {/* Clear Filters */}
-            {(searchQuery || statusFilter !== "ALL") && (
+            {searchQuery && (
               <button
                 onClick={clearFilters}
                 className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
@@ -326,7 +324,7 @@ export default function AdminBusinessesPage() {
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">
-              {editingBusiness ? "Edit Business" : "Register New Business"}
+              {editingBusiness ? "Edit Client" : "Register New Client"}
             </h2>
             <button
               onClick={handleCancel}

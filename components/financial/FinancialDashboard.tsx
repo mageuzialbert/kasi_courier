@@ -189,9 +189,9 @@ export default function FinancialDashboard({ data }: FinancialDashboardProps) {
 
       {/* Top Businesses */}
       <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-lg font-semibold mb-4">Top Businesses by Revenue</h3>
+        <h3 className="text-lg font-semibold mb-4">Top Clients by Revenue</h3>
         {data.topBusinesses.length === 0 ? (
-          <p className="text-gray-500 text-center py-4">No business revenue data</p>
+          <p className="text-gray-500 text-center py-4">No client revenue data</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -201,7 +201,7 @@ export default function FinancialDashboard({ data }: FinancialDashboardProps) {
                     Rank
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Business
+                    Client
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Revenue
@@ -240,7 +240,7 @@ export default function FinancialDashboard({ data }: FinancialDashboardProps) {
                     Date
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Business
+                    Client
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Description

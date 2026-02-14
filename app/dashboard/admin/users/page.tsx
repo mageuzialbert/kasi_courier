@@ -50,7 +50,7 @@ export default function AdminUsersPage() {
 
   async function loadUsers() {
     try {
-      const response = await fetch('/api/admin/users?limit=1000');
+      const response = await fetch('/api/admin/users?limit=1000&active=true');
       if (response.ok) {
         const data = await response.json();
         setUsers(data);

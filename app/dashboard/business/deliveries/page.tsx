@@ -122,7 +122,7 @@ function BusinessDeliveriesContent() {
         .eq('user_id', user.id)
         .single();
 
-      if (businessError || !business) throw new Error('Business not found');
+      if (businessError || !business) throw new Error('Client not found');
 
       // Determine the delivery fee
       let deliveryFee: number | null = null;
@@ -192,7 +192,7 @@ function BusinessDeliveriesContent() {
             delivery_id: deliveryData.id,
             business_id: business.id,
             amount: deliveryFee,
-            description: 'Delivery fee - Created by business',
+            description: 'Delivery fee - Created by client',
           });
       }
 

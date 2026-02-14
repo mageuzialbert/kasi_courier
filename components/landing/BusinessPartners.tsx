@@ -33,14 +33,14 @@ export default function BusinessPartners({ businesses, totalBusinesses, totalDel
             Who We Work With
           </h2>
           <p className="text-lg text-gray-600 mb-8">
-            Trusted by businesses across Tanzania
+            Trusted by clients across Tanzania
           </p>
           <div className="flex flex-col md:flex-row items-center justify-center gap-8 mb-12">
             <div className="text-center">
               <div className="text-4xl md:text-5xl font-bold text-primary mb-2">
                 {totalBusinesses}+
               </div>
-              <div className="text-gray-600">Businesses</div>
+              <div className="text-gray-600">Clients</div>
             </div>
             <div className="text-center">
               <div className="text-4xl md:text-5xl font-bold text-primary mb-2">
@@ -51,7 +51,7 @@ export default function BusinessPartners({ businesses, totalBusinesses, totalDel
           </div>
         </div>
 
-        {/* Business Logos Marquee */}
+        {/* Client Logos Marquee */}
         {displayBusinesses.length > 0 ? (
           <div 
             className="relative w-full overflow-hidden"
@@ -116,7 +116,7 @@ export default function BusinessPartners({ businesses, totalBusinesses, totalDel
         ) : (
           <div className="text-center text-gray-500 py-12">
             <Building2 className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-            <p>No business logos available yet</p>
+            <p>No client logos available yet</p>
           </div>
         )}
       </div>

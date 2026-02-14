@@ -2,14 +2,24 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Building2, Users, BarChart3, Image, FileText, Loader2, Settings, Receipt, CreditCard } from 'lucide-react';
+import { Loader2, Users, UserCog, Bike, Building2, Package, Truck, ArrowRight } from 'lucide-react';
 import { getUserRole } from '@/lib/roles';
 import { useRouter } from 'next/navigation';
 
+interface DashboardOverview {
+  totalUsers: number;
+  totalStaff: number;
+  totalRiders: number;
+  totalClients: number;
+  totalDeliveries: number;
+  totalSuppliers: number;
+}
+
 export default function AdminDashboard() {
   const router = useRouter();
-  const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [overview, setOverview] = useState<DashboardOverview | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function checkRole() {
@@ -18,9 +28,23 @@ export default function AdminDashboard() {
         router.push('/dashboard/business');
         return;
       }
-      setRole(userRole);
-      setLoading(false);
+
+      try {
+        const response = await fetch('/api/admin/dashboard-overview');
+        if (!response.ok) {
+          throw new Error('Failed to load dashboard overview');
+        }
+
+        const data = await response.json();
+        setOverview(data);
+      } catch (fetchError) {
+        console.error('Error loading admin overview:', fetchError);
+        setError('Failed to load dashboard overview');
+      } finally {
+        setLoading(false);
+      }
     }
+
     checkRole();
   }, [router]);
 
@@ -32,118 +56,100 @@ export default function AdminDashboard() {
     );
   }
 
-  const adminCards = [
+  const overviewCards = [
     {
-      title: 'Manage Businesses',
-      description: 'View and manage all registered businesses',
-      icon: Building2,
-      href: '/dashboard/admin/businesses',
-      color: 'bg-blue-500',
-    },
-    {
-      title: 'Manage Users',
-      description: 'View and manage all system users',
+      title: 'Total Users',
+      value: overview?.totalUsers || 0,
+      description: 'Staff and riders',
       icon: Users,
-      href: '/dashboard/admin/users',
-      color: 'bg-green-500',
+      color: 'text-blue-600',
     },
     {
-      title: 'Delivery Packages',
-      description: 'Manage delivery fee packages',
+      title: 'Staff Users',
+      value: overview?.totalStaff || 0,
+      description: 'Registered staff accounts',
+      icon: UserCog,
+      color: 'text-emerald-600',
+    },
+    {
+      title: 'Riders',
+      value: overview?.totalRiders || 0,
+      description: 'Registered rider accounts',
+      icon: Bike,
+      color: 'text-orange-600',
+    },
+    {
+      title: 'Registered Clients',
+      value: overview?.totalClients || 0,
+      description: 'Total client businesses',
       icon: Building2,
-      href: '/dashboard/admin/delivery-packages',
-      color: 'bg-cyan-500',
+      color: 'text-indigo-600',
     },
     {
-      title: 'Expense Categories',
-      description: 'Manage expense categories',
-      icon: FileText,
-      href: '/dashboard/admin/expense-categories',
-      color: 'bg-pink-500',
+      title: 'Total Deliveries',
+      value: overview?.totalDeliveries || 0,
+      description: 'All recorded deliveries',
+      icon: Package,
+      color: 'text-rose-600',
     },
     {
-      title: 'Expenses',
-      description: 'Track and manage platform expenses',
-      icon: BarChart3,
-      href: '/dashboard/admin/expenses',
-      color: 'bg-red-500',
-    },
-    {
-      title: 'Operations',
-      description: 'View operations dashboard and metrics',
-      icon: BarChart3,
-      href: '/dashboard/staff/operations',
-      color: 'bg-indigo-500',
-    },
-    {
-      title: 'Financial Analytics',
-      description: 'View revenue, expenses, profit, and financial data',
-      icon: BarChart3,
-      href: '/dashboard/staff/financial',
-      color: 'bg-emerald-500',
-    },
-    {
-      title: 'CMS - Sliders',
-      description: 'Manage landing page slider images',
-      icon: Image,
-      href: '/dashboard/admin/cms/sliders',
-      color: 'bg-purple-500',
-    },
-    {
-      title: 'CMS - Content',
-      description: 'Edit About Us and other CMS content',
-      icon: FileText,
-      href: '/dashboard/admin/cms/content',
-      color: 'bg-orange-500',
-    },
-    {
-      title: 'Company Profile',
-      description: 'Manage company logo, contact info, and details',
-      icon: Settings,
-      href: '/dashboard/admin/company-profile',
-      color: 'bg-teal-500',
-    },
-    {
-      title: 'Invoice Management',
-      description: 'View, create, and manage invoices and proforma invoices',
-      icon: Receipt,
-      href: '/dashboard/admin/invoices',
-      color: 'bg-amber-500',
-    },
-    {
-      title: 'Payment Instructions',
-      description: 'Configure payment instructions for invoices',
-      icon: CreditCard,
-      href: '/dashboard/admin/payment-instructions',
-      color: 'bg-violet-500',
+      title: 'Total Suppliers',
+      value: overview?.totalSuppliers || 0,
+      description: 'Registered expense suppliers',
+      icon: Truck,
+      color: 'text-teal-600',
     },
   ];
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
-      <p className="text-gray-600 mb-8">Manage your logistics platform</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
+          <p className="text-gray-600">Project overview and key platform totals</p>
+        </div>
+        <Link
+          href="/dashboard/admin/modules"
+          className="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors w-fit"
+        >
+          View Modules
+          <ArrowRight className="w-4 h-4" />
+        </Link>
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {adminCards.map((card) => (
-          <Link
-            key={card.href}
-            href={card.href}
-            className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
-          >
-            <div className="flex items-start space-x-4">
-              <div className={`${card.color} p-3 rounded-lg`}>
-                <card.icon className="w-6 h-6 text-white" />
+      {error && (
+        <div className="bg-red-50 text-red-700 border border-red-200 rounded-lg px-4 py-3 mb-6">
+          {error}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {overviewCards.map((card) => (
+          <div key={card.title} className="bg-white rounded-lg shadow-md p-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-gray-600">{card.title}</p>
+                <p className="text-3xl font-bold text-gray-900 mt-2">{card.value}</p>
+                <p className="text-sm text-gray-500 mt-2">{card.description}</p>
               </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                  {card.title}
-                </h3>
-                <p className="text-sm text-gray-600">{card.description}</p>
-              </div>
+              <card.icon className={`w-8 h-8 ${card.color}`} />
             </div>
-          </Link>
+          </div>
         ))}
+      </div>
+
+      <div className="mt-8 bg-white rounded-lg shadow-md p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">Manage Platform Modules</h2>
+        <p className="text-gray-600 mb-4">
+          Open the modules page to manage clients, users, deliveries, invoices, CMS content, and other admin tools.
+        </p>
+        <Link
+          href="/dashboard/admin/modules"
+          className="inline-flex items-center gap-2 text-primary hover:text-primary-dark font-medium"
+        >
+          Go to Modules
+          <ArrowRight className="w-4 h-4" />
+        </Link>
       </div>
     </div>
   );

@@ -12,6 +12,7 @@ ALTER TABLE regions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE districts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE delivery_fee_packages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE expense_categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE suppliers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
 
 -- ============================================
@@ -417,6 +418,50 @@ CREATE POLICY "Admin and Staff can read expense categories"
 -- Only Admins can create/update/delete categories
 CREATE POLICY "Admins can manage expense categories"
   ON expense_categories FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE id = auth.uid() AND role = 'ADMIN'
+    )
+  );
+
+-- ============================================
+-- SUPPLIERS TABLE POLICIES
+-- ============================================
+
+-- Admin and Staff can read suppliers
+CREATE POLICY "Admin and Staff can read suppliers"
+  ON suppliers FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE id = auth.uid() AND role IN ('ADMIN', 'STAFF')
+    )
+  );
+
+-- Admin and Staff can create suppliers
+CREATE POLICY "Admin and Staff can create suppliers"
+  ON suppliers FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE id = auth.uid() AND role IN ('ADMIN', 'STAFF')
+    )
+  );
+
+-- Admin and Staff can update suppliers
+CREATE POLICY "Admin and Staff can update suppliers"
+  ON suppliers FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE id = auth.uid() AND role IN ('ADMIN', 'STAFF')
+    )
+  );
+
+-- Only Admins can delete suppliers
+CREATE POLICY "Admins can delete suppliers"
+  ON suppliers FOR DELETE
   USING (
     EXISTS (
       SELECT 1 FROM users

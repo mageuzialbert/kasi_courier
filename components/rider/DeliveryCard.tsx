@@ -113,7 +113,7 @@ export default function DeliveryCard({ delivery }: DeliveryCardProps) {
                   <Package className="w-4 h-4 text-primary" />
                 </div>
                 <span className="font-semibold text-gray-900 truncate">
-                  {delivery.businesses?.name || 'Unknown Business'}
+                  {delivery.businesses?.name || 'Unknown Client'}
                 </span>
               </div>
               <div className="text-sm text-gray-600 space-y-1">

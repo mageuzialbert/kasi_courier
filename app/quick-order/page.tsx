@@ -158,7 +158,7 @@ export default function QuickOrderPage() {
   const handleOTPVerify = async (code: string) => {
     // Validate business name for new users before verification
     if (isNewUser && !businessName.trim()) {
-      setError('Please enter your business name to continue');
+      setError('Please enter your client name to continue');
       return;
     }
 
@@ -359,24 +359,24 @@ export default function QuickOrderPage() {
                   {isNewUser && (
                     <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                       <p className="text-sm text-blue-800 mb-4">
-                        This phone number is not registered. Please provide your business details to create an account.
+                        This phone number is not registered. Please provide your client details to create an account.
                       </p>
                       <div className="space-y-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Business Name <span className="text-red-500">*</span>
+                            Client Name <span className="text-red-500">*</span>
                           </label>
                           <input
                             type="text"
                             value={businessName}
                             onChange={(e) => setBusinessName(e.target.value)}
-                            placeholder="Enter your business name"
+                            placeholder="Enter your client name"
                             required
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                           />
                         </div>
 
-                        {/* Business Address with Google Maps */}
+                        {/* Client Address with Google Maps */}
                         <div>
                           {loadError && (
                             <div className="mb-2 p-2 bg-amber-50 border border-amber-200 text-amber-700 rounded text-xs flex items-center gap-1">
@@ -386,7 +386,7 @@ export default function QuickOrderPage() {
                           )}
                           {isLoaded ? (
                             <LocationPicker
-                              label="Business Address"
+                              label="Client Address"
                               value={businessAddress}
                               onChange={(address, lat, lng) => {
                                 setBusinessAddress(address);
@@ -397,13 +397,13 @@ export default function QuickOrderPage() {
                           ) : loadError ? (
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Business Address
+                                Client Address
                               </label>
                               <input
                                 type="text"
                                 value={businessAddress}
                                 onChange={(e) => setBusinessAddress(e.target.value)}
-                                placeholder="Enter your business address"
+                                placeholder="Enter your client address"
                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                               />
                             </div>

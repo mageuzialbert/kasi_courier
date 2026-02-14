@@ -11,7 +11,7 @@ interface AboutSectionProps {
 export default function AboutSection({ content }: AboutSectionProps) {
   const defaultContent = {
     title: 'About Kasi Courier Services',
-    description: 'Your trusted B2B logistics partner delivering excellence across Tanzania. We connect businesses with reliable, efficient delivery solutions.',
+    description: 'Your trusted B2B logistics partner delivering excellence across Tanzania. We connect clients with reliable, efficient delivery solutions.',
     features: [
       'Fast and Reliable Delivery',
       'Real-time Tracking',

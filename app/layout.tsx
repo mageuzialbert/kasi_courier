@@ -29,9 +29,43 @@ export const viewport: Viewport = {
 export async function generateMetadata(): Promise<Metadata> {
   const profile = await getCompanyProfile();
   
+  const title = "Kasi Courier | #1 B2B Logistics & Delivery Service in Tanzania";
+  const description = "Fast, reliable same-day delivery and courier services in Dar es Salaam. Track packages in real-time. Automated B2B logistics for 500+ Tanzanian businesses.";
+  const url = "https://kasicourier.com";
+  
   return {
-    title: profile?.company_name || "Kasi Courier Services",
-    description: "B2B Logistics Delivery Platform - Request deliveries and track your shipments",
+    title: {
+      default: title,
+      template: `%s | Kasi Courier`
+    },
+    description: description,
+    keywords: ["courier services tanzania", "logistics dar es salaam", "same day delivery", "b2b courier", "package tracking", "last mile delivery"],
+    metadataBase: new URL(url),
+    alternates: {
+      canonical: '/',
+    },
+    openGraph: {
+      title: title,
+      description: description,
+      url: url,
+      siteName: 'Kasi Courier',
+      locale: 'en_TZ',
+      type: 'website',
+      images: [
+        {
+          url: '/og-image.jpg', // Ensure this file is created or exists
+          width: 1200,
+          height: 630,
+          alt: 'Kasi Courier Services',
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: title,
+      description: description,
+      images: ['/og-image.jpg'],
+    },
     manifest: '/manifest.json',
     appleWebApp: {
       capable: true,

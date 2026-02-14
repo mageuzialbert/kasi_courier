@@ -28,7 +28,7 @@ export default function RiderCreateDeliveryPage() {
 
   async function handleCreateDelivery(data: DeliveryFormData) {
     if (!data.business_id) {
-      setError('Please select a business');
+      setError('Please select a client');
       return;
     }
 

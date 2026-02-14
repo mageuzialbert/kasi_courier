@@ -16,7 +16,7 @@ export async function PUT(
       );
     }
 
-    const { category_id, amount, description, supplier, expense_date } = await request.json();
+    const { category_id, supplier_id, amount, description, expense_date } = await request.json();
 
     // Build update object
     const updates: any = {};
@@ -32,7 +32,36 @@ export async function PUT(
       updates.amount = expenseAmount;
     }
     if (description !== undefined) updates.description = description;
-    if (supplier !== undefined) updates.supplier = supplier;
+    if (supplier_id !== undefined) {
+      if (!supplier_id) {
+        return NextResponse.json(
+          { error: 'Supplier is required' },
+          { status: 400 }
+        );
+      }
+
+      const { data: supplierData, error: supplierError } = await supabaseAdmin
+        .from('suppliers')
+        .select('id, active')
+        .eq('id', supplier_id)
+        .single();
+
+      if (supplierError || !supplierData) {
+        return NextResponse.json(
+          { error: 'Invalid supplier selected' },
+          { status: 400 }
+        );
+      }
+
+      if (!supplierData.active) {
+        return NextResponse.json(
+          { error: 'Selected supplier is inactive' },
+          { status: 400 }
+        );
+      }
+
+      updates.supplier_id = supplier_id;
+    }
     if (expense_date !== undefined) updates.expense_date = expense_date;
 
     const { data: updatedExpense, error } = await supabaseAdmin
@@ -44,6 +73,13 @@ export async function PUT(
         expense_categories:category_id (
           id,
           name
+        ),
+        suppliers:supplier_id (
+          id,
+          name,
+          phone,
+          email,
+          active
         ),
         users:created_by (
           id,

@@ -124,8 +124,14 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10 px-4">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
+    <div className="relative min-h-screen flex items-center justify-center px-4 py-8">
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: "url('/images/login-logistics-africa.jpg')" }}
+      />
+      <div className="absolute inset-0 bg-slate-900/50" />
+
+      <div className="relative z-10 max-w-md w-full bg-white/95 backdrop-blur-sm rounded-lg shadow-2xl p-8 border border-white/40">
         {/* Logo/Branding */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-primary mb-2">
@@ -285,7 +291,13 @@ export default function LoginPage() {
           <p className="text-sm text-gray-600">
             Don&apos;t have an account?{' '}
             <Link href="/register" className="text-primary hover:text-primary-dark font-medium">
-              Register your business
+              Register your client account
+            </Link>
+          </p>
+          <p className="text-sm text-gray-600 mt-2">
+            Staff, admin, or rider?{' '}
+            <Link href="/staff-login" className="text-primary hover:text-primary-dark font-medium">
+              Staff Login
             </Link>
           </p>
         </div>

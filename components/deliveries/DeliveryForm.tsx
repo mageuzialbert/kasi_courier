@@ -163,7 +163,7 @@ export default function DeliveryForm({
         );
       }
 
-      // Auto-populate pickup fields from business data
+      // Auto-populate pickup fields from client data
       const newFormData: Partial<DeliveryFormData> = {
         business_id: selectedBusinessId,
         pickup_name: selectedBusiness.name || "",
@@ -370,7 +370,7 @@ export default function DeliveryForm({
           <label className={labelClass}>
             <span className="flex items-center gap-1.5">
               <Building2 className="w-4 h-4 text-gray-400" />
-              Business <span className="text-red-500">*</span>
+              Client <span className="text-red-500">*</span>
             </span>
           </label>
           <select
@@ -380,7 +380,7 @@ export default function DeliveryForm({
             disabled={loadingBusinesses}
             className={inputClass}
           >
-            <option value="">Select a business</option>
+            <option value="">Select a client</option>
             {businesses.map((business) => (
               <option key={business.id} value={business.id}>
                 {business.name}
@@ -390,7 +390,7 @@ export default function DeliveryForm({
           {pickupPreFilled && (
             <p className="mt-2 text-sm text-green-600 flex items-center gap-1">
               <Check className="w-4 h-4" />
-              Pickup details auto-filled from business
+              Pickup details auto-filled from client
             </p>
           )}
         </div>
@@ -785,7 +785,7 @@ export default function DeliveryForm({
               className={inputClass}
             />
             <p className="mt-1.5 text-xs text-gray-500">
-              Auto-filled from selected business package. You can adjust if
+              Auto-filled from selected client package. You can adjust if
               needed.
             </p>
           </div>

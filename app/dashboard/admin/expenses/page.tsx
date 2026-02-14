@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { getUserRole } from '@/lib/roles';
 import { Loader2, Plus, Edit, Trash2, Filter } from 'lucide-react';
 
 interface Expense {
   id: string;
   category_id: string;
+  supplier_id: string | null;
   amount: number;
   description: string | null;
   supplier: string | null;
@@ -17,6 +19,13 @@ interface Expense {
   expense_categories?: {
     id: string;
     name: string;
+  };
+  suppliers?: {
+    id: string;
+    name: string;
+    phone: string;
+    email: string;
+    active: boolean;
   };
   users?: {
     id: string;
@@ -32,10 +41,28 @@ interface ExpenseCategory {
 
 interface ExpenseFormData {
   category_id: string;
+  supplier_id: string;
   amount: string;
   description: string;
-  supplier: string;
   expense_date: string;
+}
+
+interface Supplier {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  active: boolean;
+}
+
+interface SupplierDetails {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  active: boolean;
+  totalExpense: number;
+  expenseCount: number;
 }
 
 export default function AdminExpensesPage() {
@@ -44,21 +71,27 @@ export default function AdminExpensesPage() {
   const [loading, setLoading] = useState(true);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [showSupplierModal, setShowSupplierModal] = useState(false);
+  const [supplierDetailsLoading, setSupplierDetailsLoading] = useState(false);
+  const [supplierDetails, setSupplierDetails] = useState<SupplierDetails | null>(null);
+  const [supplierDetailsError, setSupplierDetailsError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [filters, setFilters] = useState({
     category_id: '',
+    supplier_id: '',
     start_date: '',
     end_date: '',
   });
 
   const [formData, setFormData] = useState<ExpenseFormData>({
     category_id: '',
+    supplier_id: '',
     amount: '',
     description: '',
-    supplier: '',
     expense_date: new Date().toISOString().split('T')[0],
   });
 
@@ -71,6 +104,7 @@ export default function AdminExpensesPage() {
       }
       setRole(userRole);
       loadCategories();
+      loadSuppliers();
       loadExpenses();
     }
     checkRole();
@@ -88,11 +122,24 @@ export default function AdminExpensesPage() {
     }
   }
 
+  async function loadSuppliers() {
+    try {
+      const response = await fetch('/api/admin/suppliers?active=true');
+      if (response.ok) {
+        const data = await response.json();
+        setSuppliers(data);
+      }
+    } catch (error) {
+      console.error('Error loading suppliers:', error);
+    }
+  }
+
   async function loadExpenses() {
     try {
       setLoading(true);
       const params = new URLSearchParams();
       if (filters.category_id) params.set('category_id', filters.category_id);
+      if (filters.supplier_id) params.set('supplier_id', filters.supplier_id);
       if (filters.start_date) params.set('start_date', filters.start_date);
       if (filters.end_date) params.set('end_date', filters.end_date);
       params.set('limit', '1000');
@@ -119,9 +166,9 @@ export default function AdminExpensesPage() {
     setEditingExpense(null);
     setFormData({
       category_id: '',
+      supplier_id: '',
       amount: '',
       description: '',
-      supplier: '',
       expense_date: new Date().toISOString().split('T')[0],
     });
     setError('');
@@ -132,9 +179,9 @@ export default function AdminExpensesPage() {
     setEditingExpense(expense);
     setFormData({
       category_id: expense.category_id,
+      supplier_id: expense.supplier_id || '',
       amount: expense.amount.toString(),
       description: expense.description || '',
-      supplier: expense.supplier || '',
       expense_date: expense.expense_date,
     });
     setError('');
@@ -149,6 +196,10 @@ export default function AdminExpensesPage() {
     try {
       if (!formData.category_id) {
         throw new Error('Category is required');
+      }
+
+      if (!formData.supplier_id) {
+        throw new Error('Supplier is required');
       }
 
       const amount = parseFloat(formData.amount);
@@ -166,9 +217,9 @@ export default function AdminExpensesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           category_id: formData.category_id,
+          supplier_id: formData.supplier_id,
           amount: amount,
           description: formData.description || null,
-          supplier: formData.supplier || null,
           expense_date: formData.expense_date,
         }),
       });
@@ -206,6 +257,30 @@ export default function AdminExpensesPage() {
       loadExpenses();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to delete expense');
+    }
+  }
+
+  async function handleSupplierClick(expense: Expense) {
+    if (!expense.supplier_id) return;
+
+    setShowSupplierModal(true);
+    setSupplierDetails(null);
+    setSupplierDetailsError('');
+    setSupplierDetailsLoading(true);
+
+    try {
+      const response = await fetch(`/api/admin/suppliers/${expense.supplier_id}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load supplier details');
+      }
+
+      setSupplierDetails(data);
+    } catch (err) {
+      setSupplierDetailsError(err instanceof Error ? err.message : 'Failed to load supplier details');
+    } finally {
+      setSupplierDetailsLoading(false);
     }
   }
 
@@ -285,6 +360,18 @@ export default function AdminExpensesPage() {
               </option>
             ))}
           </select>
+          <select
+            value={filters.supplier_id}
+            onChange={(e) => setFilters({ ...filters, supplier_id: e.target.value })}
+            className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
+          >
+            <option value="">All Suppliers</option>
+            {suppliers.map((supplier) => (
+              <option key={supplier.id} value={supplier.id}>
+                {supplier.name}
+              </option>
+            ))}
+          </select>
           <input
             type="date"
             value={filters.start_date}
@@ -299,9 +386,9 @@ export default function AdminExpensesPage() {
             placeholder="End Date"
             className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
           />
-          {(filters.category_id || filters.start_date || filters.end_date) && (
+          {(filters.category_id || filters.supplier_id || filters.start_date || filters.end_date) && (
             <button
-              onClick={() => setFilters({ category_id: '', start_date: '', end_date: '' })}
+              onClick={() => setFilters({ category_id: '', supplier_id: '', start_date: '', end_date: '' })}
               className="text-sm text-gray-600 hover:text-gray-800"
             >
               Clear Filters
@@ -366,7 +453,19 @@ export default function AdminExpensesPage() {
                     <div className="text-sm text-gray-500">{expense.description || '-'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{expense.supplier || '-'}</div>
+                    <div className="text-sm text-gray-500">
+                      {expense.supplier_id ? (
+                        <button
+                          type="button"
+                          onClick={() => handleSupplierClick(expense)}
+                          className="text-primary hover:underline"
+                        >
+                          {expense.suppliers?.name || expense.supplier || '-'}
+                        </button>
+                      ) : (
+                        expense.suppliers?.name || expense.supplier || '-'
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
@@ -464,15 +563,28 @@ export default function AdminExpensesPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Supplier
+                  Supplier *
                 </label>
-                <input
-                  type="text"
-                  value={formData.supplier}
-                  onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
+                <select
+                  value={formData.supplier_id}
+                  onChange={(e) => setFormData({ ...formData, supplier_id: e.target.value })}
+                  required
                   className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
-                  placeholder="Where was this purchased? (e.g., Shell Station, Office Depot)"
-                />
+                >
+                  <option value="">Select Supplier</option>
+                  {suppliers.map((supplier) => (
+                    <option key={supplier.id} value={supplier.id}>
+                      {supplier.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="mt-1 text-xs text-gray-500">
+                  Can&apos;t find a supplier?{' '}
+                  <Link href="/dashboard/admin/suppliers" className="text-primary hover:underline">
+                    Create one here
+                  </Link>
+                  .
+                </div>
               </div>
 
               <div>
@@ -511,6 +623,64 @@ export default function AdminExpensesPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Supplier Details Modal */}
+      {showSupplierModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Supplier Details</h2>
+
+            {supplierDetailsLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              </div>
+            ) : supplierDetailsError ? (
+              <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
+                {supplierDetailsError}
+              </div>
+            ) : supplierDetails ? (
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm text-gray-500">Name</p>
+                  <p className="text-base font-medium text-gray-900">{supplierDetails.name}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Phone</p>
+                  <p className="text-base text-gray-900">{supplierDetails.phone || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Email</p>
+                  <p className="text-base text-gray-900">{supplierDetails.email || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Total Expense</p>
+                  <p className="text-base font-semibold text-gray-900">
+                    {formatCurrency(supplierDetails.totalExpense)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Number of Expenses</p>
+                  <p className="text-base text-gray-900">{supplierDetails.expenseCount}</p>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSupplierModal(false);
+                  setSupplierDetails(null);
+                  setSupplierDetailsError('');
+                }}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

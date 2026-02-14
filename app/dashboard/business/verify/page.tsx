@@ -69,7 +69,7 @@ export default function BusinessVerifyPage() {
         .eq('id', user.id)
         .single();
 
-      // Get phone from businesses table as fallback
+      // Get phone from clients table as fallback
       let phoneFromBusiness = '';
       try {
         const { data: business } = await supabase

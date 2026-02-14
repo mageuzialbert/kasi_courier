@@ -188,13 +188,13 @@ export default function DeliveryDetails({
         </div>
       )}
 
-      {/* Business Info */}
+      {/* Client Info */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
         <div className="flex items-center gap-2 mb-3">
           <div className="p-2 bg-primary/10 rounded-lg">
             <Package className="w-5 h-5 text-primary" />
           </div>
-          <h3 className="font-semibold text-gray-900">Business</h3>
+          <h3 className="font-semibold text-gray-900">Client</h3>
         </div>
         <div className="flex items-center justify-between">
           <div className="text-sm text-gray-700">

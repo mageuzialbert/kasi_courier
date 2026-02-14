@@ -48,6 +48,8 @@ export async function GET(request: NextRequest) {
     }
     if (active !== null) {
       query = query.eq('active', active === 'true');
+    } else {
+      query = query.eq('active', true);
     }
 
     const { data: users, error } = await query;

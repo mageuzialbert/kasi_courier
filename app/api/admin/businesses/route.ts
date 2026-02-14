@@ -47,6 +47,8 @@ export async function GET(request: NextRequest) {
         // In Supabase, we can use multiple filters
         query = query.or("active.is.null,active.eq.false");
       }
+    } else {
+      query = query.eq("active", true);
     }
 
     // Apply search filter if provided

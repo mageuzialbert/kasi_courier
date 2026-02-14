@@ -141,8 +141,53 @@ export default async function Home() {
     getCompanyProfile(),
   ]);
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'LogisticsService',
+    'name': 'Kasi Courier',
+    'image': 'https://kasicourier.com/icons/icon-maskable.svg',
+    '@id': 'https://kasicourier.com',
+    'url': 'https://kasicourier.com',
+    'telephone': companyProfile?.phone || '+255 700 000 000',
+    'address': {
+      '@type': 'PostalAddress',
+      'streetAddress': companyProfile?.address || 'Dar es Salaam, Tanzania',
+      'addressLocality': companyProfile?.city || 'Dar es Salaam',
+      'addressRegion': companyProfile?.region || 'Dar es Salaam',
+      'postalCode': companyProfile?.postal_code || '14112',
+      'addressCountry': 'TZ'
+    },
+    'geo': {
+      '@type': 'GeoCoordinates',
+      'latitude': -6.7924,
+      'longitude': 39.2083
+    },
+    'openingHoursSpecification': {
+      '@type': 'OpeningHoursSpecification',
+      'dayOfWeek': [
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday'
+      ],
+      'opens': '08:00',
+      'closes': '18:00'
+    },
+    'sameAs': [
+      'https://www.instagram.com/kasicourier',
+      'https://twitter.com/kasicourier'
+    ]
+  };
+
   return (
     <main className="min-h-screen">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
       {/* Navigation */}
       <nav className="bg-white shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -168,10 +213,15 @@ export default async function Home() {
         </div>
       </nav>
 
+      <h1 className="sr-only">Premier B2B Logistics & Courier Services in Dar es Salaam</h1>
+
       {/* Hero Slider */}
       <HeroSlider slides={sliders} />
 
       {/* CTA Bar */}
+      <div className="bg-primary text-white py-4 text-center font-medium">
+         Trusted by 500+ Businesses in Tanzania • 99.8% On-Time Delivery Rate
+      </div>
       <CTABar />
 
       {/* About Section */}

@@ -81,7 +81,7 @@ export default function CreateInvoicePage() {
       setBusinesses(data || []);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to load businesses",
+        err instanceof Error ? err.message : "Failed to load clients",
       );
     } finally {
       setLoading(false);
@@ -218,7 +218,7 @@ export default function CreateInvoicePage() {
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Create Invoice</h1>
         <p className="text-gray-600 mt-2">
-          Create a new invoice or proforma invoice for a business
+          Create a new invoice or proforma invoice for a client
         </p>
       </div>
 
@@ -234,7 +234,7 @@ export default function CreateInvoicePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Business *
+                Client *
               </label>
               <select
                 value={formData.business_id}
@@ -244,7 +244,7 @@ export default function CreateInvoicePage() {
                 required
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
               >
-                <option value="">Select Business</option>
+                <option value="">Select Client</option>
                 {businesses.map((business) => (
                   <option key={business.id} value={business.id}>
                     {business.name} ({business.phone})

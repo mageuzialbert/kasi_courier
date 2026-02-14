@@ -176,7 +176,7 @@ export default function StaffDashboard() {
             <Receipt className="w-8 h-8 text-primary" />
             <div>
               <h3 className="font-semibold text-gray-900">Create Invoice</h3>
-              <p className="text-sm text-gray-600">Generate invoice for a business</p>
+              <p className="text-sm text-gray-600">Generate invoice for a client</p>
             </div>
           </Link>
         </div>

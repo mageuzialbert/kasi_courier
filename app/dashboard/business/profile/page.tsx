@@ -162,7 +162,7 @@ export default function BusinessProfilePage() {
       // Get name with fallbacks
       const businessName = business?.name || userData?.name || user.user_metadata?.business_name || '';
 
-      // Get address fields from business (these should be populated if they exist)
+      // Get address fields from client (these should be populated if they exist)
       const address = business?.address ?? '';
       const city = business?.city ?? '';
       const postalCode = business?.postal_code ?? '';
@@ -286,13 +286,13 @@ export default function BusinessProfilePage() {
           console.error('Error querying business:', businessQueryError);
           // Check if it's a "not found" error (PGRST116)
           if (businessQueryError.code === 'PGRST116' || businessQueryError.message?.includes('No rows')) {
-            throw new Error('Business not found. Please contact support.');
+            throw new Error('Client not found. Please contact support.');
           }
-          throw new Error(`Failed to find business: ${businessQueryError.message}`);
+          throw new Error(`Failed to find client: ${businessQueryError.message}`);
         }
 
         if (!business) {
-          throw new Error('Business not found. Please contact support.');
+          throw new Error('Client not found. Please contact support.');
         }
 
         businessIdToUse = business.id;
@@ -424,7 +424,7 @@ export default function BusinessProfilePage() {
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Profile Settings</h1>
         <p className="text-gray-600 mt-2">
-          Update your business information and address
+          Update your client information and address
         </p>
       </div>
 
@@ -441,9 +441,9 @@ export default function BusinessProfilePage() {
       )}
 
       <form onSubmit={handleSave} className="bg-white rounded-lg shadow-md p-6 space-y-6">
-        {/* Business Logo */}
+        {/* Client Logo */}
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Business Logo</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Client Logo</h2>
           <div className="flex items-start gap-6">
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -473,7 +473,7 @@ export default function BusinessProfilePage() {
                 )}
               </div>
               <p className="text-xs text-gray-500 mt-2">
-                Recommended: PNG or SVG, max 5MB. Your logo will appear on your business profile.
+                Recommended: PNG or SVG, max 5MB. Your logo will appear on your client profile.
               </p>
             </div>
             {profile.logo_url && (
@@ -481,7 +481,7 @@ export default function BusinessProfilePage() {
                 <div className="w-32 h-32 border-2 border-gray-200 rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center">
                   <img
                     src={profile.logo_url}
-                    alt="Business Logo"
+                    alt="Client Logo"
                     className="max-w-full max-h-full object-contain"
                   />
                 </div>
@@ -491,11 +491,11 @@ export default function BusinessProfilePage() {
         </div>
 
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Business Information</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Client Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Business Name *
+                Client Name *
               </label>
               <input
                 type="text"
@@ -552,7 +552,7 @@ export default function BusinessProfilePage() {
             <div className="md:col-span-2">
               {isLoaded ? (
                 <LocationPicker
-                  label="Business Address"
+                  label="Client Address"
                   value={profile.address || ''}
                   onChange={(address, lat, lng) => setProfile({ 
                     ...profile, 
@@ -565,7 +565,7 @@ export default function BusinessProfilePage() {
               ) : loadError ? (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Business Address
+                    Client Address
                   </label>
                   <input
                     type="text"

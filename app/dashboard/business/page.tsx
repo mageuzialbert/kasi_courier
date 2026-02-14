@@ -152,7 +152,7 @@ export default function BusinessDashboard() {
     <div>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">
-          Welcome, {businessName || 'Business'}!
+          Welcome, {businessName || 'Client'}!
         </h1>
         <p className="text-gray-600 mt-2">
           Here&apos;s an overview of your delivery operations

@@ -58,7 +58,7 @@ export default function RiderRegisterBusinessPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to register business');
+        throw new Error(errorData.error || 'Failed to register client');
       }
 
       setSuccess(true);
@@ -68,7 +68,7 @@ export default function RiderRegisterBusinessPage() {
         router.push('/dashboard/rider');
       }, 2000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to register business');
+      setError(err instanceof Error ? err.message : 'Failed to register client');
     } finally {
       setSubmitting(false);
     }
@@ -86,8 +86,8 @@ export default function RiderRegisterBusinessPage() {
     return (
       <div className="flex flex-col items-center justify-center h-64">
         <CheckCircle className="w-16 h-16 text-green-500 mb-4" />
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Business Registered!</h2>
-        <p className="text-gray-600">The business has been successfully registered.</p>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Client Registered!</h2>
+        <p className="text-gray-600">The client has been successfully registered.</p>
         <p className="text-gray-500 text-sm mt-2">Redirecting to dashboard...</p>
       </div>
     );
@@ -103,8 +103,8 @@ export default function RiderRegisterBusinessPage() {
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Dashboard
         </Link>
-        <h1 className="text-3xl font-bold text-gray-900">Register New Business</h1>
-        <p className="text-gray-600 mt-1">Fill in the details below to register a new business</p>
+        <h1 className="text-3xl font-bold text-gray-900">Register New Client</h1>
+        <p className="text-gray-600 mt-1">Fill in the details below to register a new client</p>
       </div>
 
       <div className="bg-white rounded-lg shadow-md p-6">

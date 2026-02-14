@@ -325,7 +325,7 @@ export default function InvoiceDocument({
       {/* Footer */}
       <div className="mt-12 pt-6 border-t border-gray-300 text-center text-sm text-gray-600">
         <p className="mb-2">
-          Thank you for your business! We appreciate your partnership.
+          Thank you for your partnership! We appreciate working with you.
         </p>
         <p>
           &copy; {new Date().getFullYear()}{' '}

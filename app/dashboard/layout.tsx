@@ -20,6 +20,8 @@ import {
   Settings,
   CreditCard,
   FolderOpen,
+  ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 import { getCurrentUser, logout } from "@/lib/auth";
 import { getUserRole } from "@/lib/roles";
@@ -33,6 +35,7 @@ interface NavItem {
   icon: any;
   permissions?: string[]; // Required permissions (any of these)
   modules?: string[]; // Required module access (any of these)
+  children?: NavItem[];
 }
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
@@ -42,9 +45,9 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set());
 
   const {
-    hasPermission,
     hasModuleAccess,
     hasAnyPermission,
     loading: permissionsLoading,
@@ -77,17 +80,6 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     router.push("/login");
   };
 
-  if (loading || permissionsLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
   // Get base dashboard path based on role
   const getDashboardBase = () => {
     switch (role) {
@@ -119,20 +111,52 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   // Admin has access to all items - no permission filtering needed
   const adminNavItems: NavItem[] = [
     { href: "/dashboard/admin", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/dashboard/admin/businesses", label: "Clients", icon: Building2 },
     { href: "/dashboard/admin/users", label: "Users", icon: User },
-    { href: "/dashboard/staff/deliveries", label: "Deliveries", icon: Package },
+    {
+      href: "#",
+      label: "Contacts",
+      icon: Building2,
+      children: [
+        { href: "/dashboard/admin/businesses", label: "Clients", icon: Building2 },
+        { href: "/dashboard/admin/suppliers", label: "Suppliers", icon: Building2 },
+      ],
+    },
     {
       href: "/dashboard/staff/operations",
       label: "Operations",
       icon: BarChart3,
+      children: [
+        { href: "/dashboard/staff/deliveries", label: "Deliveries", icon: Package },
+      ],
     },
-    { href: "/dashboard/staff/financial", label: "Financial", icon: Receipt },
-    { href: "/dashboard/admin/cms/sliders", label: "CMS Sliders", icon: Image },
     {
-      href: "/dashboard/admin/cms/content",
-      label: "CMS Content",
-      icon: FileText,
+      href: "/dashboard/staff/financial",
+      label: "Financials",
+      icon: Receipt,
+      children: [
+        { href: "/dashboard/staff/deliveries", label: "Revenue", icon: BarChart3 },
+        { href: "/dashboard/admin/expenses", label: "Expenses", icon: BarChart3 },
+        { href: "/dashboard/admin/invoices", label: "Invoice", icon: FileText },
+      ],
+    },
+    {
+      href: "#",
+      label: "Admin Settings",
+      icon: Settings,
+      children: [
+        {
+          href: "/dashboard/admin/company-profile",
+          label: "Company Profile",
+          icon: Settings,
+        },
+        { href: "/dashboard/admin/cms/sliders", label: "CMS Sliders", icon: Image },
+        { href: "/dashboard/admin/cms/content", label: "CMS Content", icon: FileText },
+        {
+          href: "/dashboard/admin/payment-instructions",
+          label: "Payment Instructions",
+          icon: CreditCard,
+        },
+      ],
     },
   ];
 
@@ -179,6 +203,12 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       href: "/dashboard/admin/expenses",
       label: "Expenses",
       icon: BarChart3,
+      modules: ["expenses"],
+    },
+    {
+      href: "/dashboard/admin/suppliers",
+      label: "Suppliers",
+      icon: Building2,
       modules: ["expenses"],
     },
     {
@@ -230,32 +260,52 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     },
     {
       href: "/dashboard/rider/register-business",
-      label: "Register Business",
+      label: "Register Client",
       icon: Building2,
       permissions: ["businesses.create"],
     },
   ];
 
   // Filter nav items based on permissions
+  const hasItemAccess = (item: NavItem): boolean => {
+    // Always show items without permission requirements
+    if (!item.permissions && !item.modules) return true;
+
+    // Check module access
+    if (item.modules) {
+      for (const mod of item.modules) {
+        if (hasModuleAccess(mod)) return true;
+      }
+    }
+
+    // Check specific permissions
+    if (item.permissions && hasAnyPermission(item.permissions)) return true;
+
+    return false;
+  };
+
   const filterNavItems = (items: NavItem[]): NavItem[] => {
-    return items.filter((item) => {
-      // Always show items without permission requirements
-      if (!item.permissions && !item.modules) return true;
+    return items.reduce<NavItem[]>((filtered, item) => {
+      const filteredChildren = item.children ? filterNavItems(item.children) : undefined;
+      const itemAccessible = hasItemAccess(item);
 
-      // Check module access
-      if (item.modules) {
-        for (const mod of item.modules) {
-          if (hasModuleAccess(mod)) return true;
+      // Parent-only group item (href "#") should only render when it has visible children
+      if (item.href === "#") {
+        if (filteredChildren && filteredChildren.length > 0) {
+          filtered.push({ ...item, children: filteredChildren });
         }
+        return filtered;
       }
 
-      // Check specific permissions
-      if (item.permissions) {
-        if (hasAnyPermission(item.permissions)) return true;
+      if (itemAccessible || (filteredChildren && filteredChildren.length > 0)) {
+        filtered.push({
+          ...item,
+          children: filteredChildren,
+        });
       }
 
-      return false;
-    });
+      return filtered;
+    }, []);
   };
 
   const getNavItems = (): NavItem[] => {
@@ -267,6 +317,61 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   };
 
   const navItems = getNavItems();
+  const isPathActive = (href: string) => {
+    if (!href || href === "#") return false;
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
+
+  const hasActiveChild = (children?: NavItem[]): boolean => {
+    if (!children || children.length === 0) return false;
+    return children.some((child) => isPathActive(child.href) || hasActiveChild(child.children));
+  };
+
+  const getMenuKey = (item: NavItem) => `${item.label}:${item.href}`;
+
+  useEffect(() => {
+    setExpandedMenus((prev) => {
+      const next = new Set(prev);
+
+      const expandActiveParents = (items: NavItem[]) => {
+        items.forEach((item) => {
+          if (item.children && item.children.length > 0) {
+            if (isPathActive(item.href) || hasActiveChild(item.children)) {
+              next.add(getMenuKey(item));
+            }
+            expandActiveParents(item.children);
+          }
+        });
+      };
+
+      expandActiveParents(navItems);
+      return next;
+    });
+  }, [pathname, role, navItems.length]);
+
+  const toggleMenu = (item: NavItem) => {
+    const menuKey = getMenuKey(item);
+    setExpandedMenus((prev) => {
+      const next = new Set(prev);
+      if (next.has(menuKey)) {
+        next.delete(menuKey);
+      } else {
+        next.add(menuKey);
+      }
+      return next;
+    });
+  };
+
+  if (loading || permissionsLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -335,21 +440,94 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
           >
             <nav className="p-4 space-y-2">
               {navItems.map((item) => {
-                const isActive = pathname === item.href;
+                const isGroup = item.href === "#";
+                const itemIsActive = isPathActive(item.href) || hasActiveChild(item.children);
+                const hasChildren = !!item.children && item.children.length > 0;
+                const isExpanded = hasChildren && expandedMenus.has(getMenuKey(item));
+
                 return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setSidebarOpen(false)}
-                    className={`flex items-center space-x-3 px-4 py-3 rounded-md transition-colors ${
-                      isActive
-                        ? "bg-primary text-white"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                  >
-                    <item.icon className="w-5 h-5" />
-                    <span className="font-medium">{item.label}</span>
-                  </Link>
+                  <div key={`${item.label}-${item.href}`}>
+                    {isGroup ? (
+                      <button
+                        type="button"
+                        onClick={() => hasChildren && toggleMenu(item)}
+                        className={`w-full flex items-center justify-between px-4 py-3 rounded-md transition-colors ${
+                          itemIsActive
+                            ? "bg-primary/10 text-primary"
+                            : "text-gray-700 hover:bg-gray-100"
+                        }`}
+                        aria-expanded={isExpanded}
+                      >
+                        <span className="flex items-center space-x-3">
+                          <item.icon className="w-5 h-5" />
+                          <span className="font-medium">{item.label}</span>
+                        </span>
+                        {hasChildren &&
+                          (isExpanded ? (
+                            <ChevronDown className="w-4 h-4" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4" />
+                          ))}
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <Link
+                          href={item.href}
+                          onClick={() => setSidebarOpen(false)}
+                          className={`flex-1 flex items-center space-x-3 px-4 py-3 rounded-md transition-colors ${
+                            itemIsActive
+                              ? "bg-primary text-white"
+                              : "text-gray-700 hover:bg-gray-100"
+                          }`}
+                        >
+                          <item.icon className="w-5 h-5" />
+                          <span className="font-medium">{item.label}</span>
+                        </Link>
+                        {hasChildren && (
+                          <button
+                            type="button"
+                            onClick={() => toggleMenu(item)}
+                            className={`p-2 rounded-md transition-colors ${
+                              itemIsActive
+                                ? "text-primary hover:bg-primary/10"
+                                : "text-gray-500 hover:bg-gray-100"
+                            }`}
+                            aria-label={isExpanded ? `Collapse ${item.label}` : `Expand ${item.label}`}
+                            aria-expanded={isExpanded}
+                          >
+                            {isExpanded ? (
+                              <ChevronDown className="w-4 h-4" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4" />
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {hasChildren && isExpanded && (
+                      <div className="ml-5 mt-1 space-y-1 border-l border-gray-200 pl-3">
+                        {(item.children ?? []).map((child) => {
+                          const childIsActive = isPathActive(child.href) || hasActiveChild(child.children);
+                          return (
+                            <Link
+                              key={`${child.label}-${child.href}`}
+                              href={child.href}
+                              onClick={() => setSidebarOpen(false)}
+                              className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm transition-colors ${
+                                childIsActive
+                                  ? "bg-primary text-white"
+                                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-800"
+                              }`}
+                            >
+                              <child.icon className="w-4 h-4" />
+                              <span className="font-medium">{child.label}</span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </nav>

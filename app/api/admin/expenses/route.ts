@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams;
     const categoryId = searchParams.get('category_id');
+    const supplierId = searchParams.get('supplier_id');
     const startDate = searchParams.get('start_date');
     const endDate = searchParams.get('end_date');
     const limit = parseInt(searchParams.get('limit') || '100');
@@ -38,6 +39,13 @@ export async function GET(request: NextRequest) {
           id,
           name
         ),
+        suppliers:supplier_id (
+          id,
+          name,
+          phone,
+          email,
+          active
+        ),
         users:created_by (
           id,
           name
@@ -48,6 +56,10 @@ export async function GET(request: NextRequest) {
 
     if (categoryId) {
       query = query.eq('category_id', categoryId);
+    }
+
+    if (supplierId) {
+      query = query.eq('supplier_id', supplierId);
     }
 
     if (startDate) {
@@ -100,12 +112,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { category_id, amount, description, supplier, expense_date } = await request.json();
+    const { category_id, supplier_id, amount, description, expense_date } = await request.json();
 
     // Validation
     if (!category_id) {
       return NextResponse.json(
         { error: 'Category is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!supplier_id) {
+      return NextResponse.json(
+        { error: 'Supplier is required' },
         { status: 400 }
       );
     }
@@ -125,13 +144,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const { data: supplierData, error: supplierError } = await supabaseAdmin
+      .from('suppliers')
+      .select('id, active')
+      .eq('id', supplier_id)
+      .single();
+
+    if (supplierError || !supplierData) {
+      return NextResponse.json(
+        { error: 'Invalid supplier selected' },
+        { status: 400 }
+      );
+    }
+
+    if (!supplierData.active) {
+      return NextResponse.json(
+        { error: 'Selected supplier is inactive' },
+        { status: 400 }
+      );
+    }
+
     const { data: newExpense, error } = await supabaseAdmin
       .from('expenses')
       .insert({
         category_id,
+        supplier_id,
         amount: expenseAmount,
         description: description || null,
-        supplier: supplier || null,
         expense_date: expense_date || new Date().toISOString().split('T')[0],
         created_by: user.id,
       })
@@ -140,6 +179,13 @@ export async function POST(request: NextRequest) {
         expense_categories:category_id (
           id,
           name
+        ),
+        suppliers:supplier_id (
+          id,
+          name,
+          phone,
+          email,
+          active
         ),
         users:created_by (
           id,

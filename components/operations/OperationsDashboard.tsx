@@ -133,7 +133,7 @@ export default function OperationsDashboard({ data }: OperationsDashboardProps) 
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Business
+                    Client
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Status

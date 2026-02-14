@@ -30,7 +30,7 @@ export default function BusinessDeliveryDetailsPage({ params }: { params: { id: 
           .single();
 
         if (!business) {
-          setError('Business profile not found');
+          setError('Client profile not found');
           setLoading(false);
           return;
         }

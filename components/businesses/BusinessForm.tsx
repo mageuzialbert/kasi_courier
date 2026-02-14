@@ -304,14 +304,14 @@ export default function BusinessForm({
       {/* Location Section */}
       <div className="border-t pt-4 mt-4">
         <h3 className="text-md font-semibold text-gray-800 mb-3">
-          Business Location
+          Client Location
         </h3>
 
         {/* Address with Google Maps */}
         <div className="mb-4">
           {isLoaded ? (
             <LocationPicker
-              label="Business Address"
+              label="Client Address"
               value={formData.address}
               onChange={handleLocationChange}
               defaultLocation={
@@ -323,7 +323,7 @@ export default function BusinessForm({
           ) : loadError ? (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Business Address
+                Client Address
               </label>
               <input
                 type="text"
@@ -331,7 +331,7 @@ export default function BusinessForm({
                 onChange={(e) =>
                   setFormData({ ...formData, address: e.target.value })
                 }
-                placeholder="Enter business address"
+                placeholder="Enter client address"
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
               />
             </div>

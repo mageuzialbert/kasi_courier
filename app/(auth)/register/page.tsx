@@ -26,7 +26,7 @@ interface DeliveryPackage {
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [step, setStep] = useState(1); // 1 = Business Info, 2 = Account Info, 3 = Package Selection
+  const [step, setStep] = useState(1); // 1 = Client Info, 2 = Account Info, 3 = Package Selection
   const [formData, setFormData] = useState({
     businessName: '',
     email: '',
@@ -83,7 +83,7 @@ export default function RegisterPage() {
     setError('');
     
     if (!formData.businessName.trim()) {
-      setError('Business name is required');
+      setError('Client name is required');
       return false;
     }
 
@@ -209,7 +209,7 @@ export default function RegisterPage() {
           <h1 className="text-3xl font-bold text-primary mb-2">
             Kasi Courier Services
           </h1>
-          <p className="text-gray-600">Register your business</p>
+          <p className="text-gray-600">Register your client account</p>
         </div>
 
         {/* Step Indicator */}
@@ -229,7 +229,7 @@ export default function RegisterPage() {
           </div>
         </div>
         <div className="flex justify-center mb-6 text-sm text-gray-600">
-          <span className={step === 1 ? 'font-semibold text-primary' : ''}>Business Info</span>
+          <span className={step === 1 ? 'font-semibold text-primary' : ''}>Client Info</span>
           <span className="mx-2">•</span>
           <span className={step === 2 ? 'font-semibold text-primary' : ''}>Account</span>
           <span className="mx-2">•</span>
@@ -243,12 +243,12 @@ export default function RegisterPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Step 1: Business Information */}
+          {/* Step 1: Client Information */}
           {step === 1 && (
             <>
               <div>
                 <label htmlFor="businessName" className="block text-sm font-medium text-gray-700 mb-1">
-                  Business Name
+                  Client Name
                 </label>
                 <input
                   id="businessName"
@@ -257,7 +257,7 @@ export default function RegisterPage() {
                   onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
                   required
                   className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
-                  placeholder="Your Business Name"
+                  placeholder="Your Client Name"
                 />
               </div>
 
@@ -477,7 +477,7 @@ export default function RegisterPage() {
                   disabled={loading}
                   className="flex-1 bg-primary text-white py-2 px-4 rounded-md hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                 >
-                  {loading ? 'Registering...' : 'Register Business'}
+                  {loading ? 'Registering...' : 'Register Client'}
                 </button>
               </div>
             </>

@@ -48,9 +48,9 @@ export default function StaffLoginPage() {
       } else if (role === 'RIDER') {
         router.push('/dashboard/rider');
       } else {
-        // If not staff/admin/rider, redirect to business login
+        // If not staff/admin/rider, redirect to client login
         await supabase.auth.signOut();
-        setError('This login is for staff, admin, and riders only. Please use the business login.');
+        setError('This login is for staff, admin, and riders only. Please use the client login.');
         return;
       }
 
@@ -121,12 +121,12 @@ export default function StaffLoginPage() {
 
 
 
-        {/* Business Login Link */}
+        {/* Client Login Link */}
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
-            Are you a business?{' '}
+            Are you a client?{' '}
             <Link href="/login" className="text-primary hover:text-primary-dark font-medium">
-              Business Login
+              Client Login
             </Link>
           </p>
         </div>
