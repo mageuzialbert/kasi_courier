@@ -50,6 +50,7 @@ function BusinessDeliveriesContent() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [defaultPickupDetails, setDefaultPickupDetails] = useState<Partial<DeliveryFormData> | undefined>(undefined);
 
   useEffect(() => {
     // Check if we should show create form
@@ -64,14 +65,24 @@ function BusinessDeliveriesContent() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Get business ID
+      // Get business profile
       const { data: business } = await supabase
         .from('businesses')
-        .select('id')
+        .select('id, name, phone, address, latitude, longitude, district_id')
         .eq('user_id', user.id)
         .single();
 
       if (!business) return;
+
+      // Build default pickup details from business profile
+      setDefaultPickupDetails({
+        pickup_name: business.name || '',
+        pickup_phone: business.phone || '',
+        pickup_address: business.address || '',
+        pickup_latitude: business.latitude || null,
+        pickup_longitude: business.longitude || null,
+        pickup_district_id: business.district_id || null,
+      });
 
       // Get deliveries
       const { data, error } = await supabase
@@ -252,6 +263,7 @@ function BusinessDeliveriesContent() {
             }}
             loading={submitting}
             error={error}
+            defaultPickupDetails={defaultPickupDetails}
           />
         </div>
       )}

@@ -15,6 +15,7 @@ interface LocationPickerProps {
   defaultLocation?: { lat: number; lng: number };
   error?: string;
   disabled?: boolean;
+  autoFocus?: boolean;
 }
 
 const mapContainerStyle = {
@@ -41,6 +42,7 @@ export default function LocationPicker({
   defaultLocation,
   error,
   disabled = false,
+  autoFocus = false,
 }: LocationPickerProps) {
   const [markerPosition, setMarkerPosition] = useState<google.maps.LatLngLiteral | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
@@ -139,6 +141,7 @@ export default function LocationPicker({
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
           disabled={!ready || disabled}
+          autoFocus={autoFocus}
           className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all ${
             error ? 'border-red-300 focus:ring-red-200' : 'border-gray-300'
           }`}

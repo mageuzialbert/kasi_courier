@@ -55,6 +55,7 @@ interface DeliveryFormProps {
   businessId?: string | null;
   showBusinessSelector?: boolean;
   showDeliveryFee?: boolean;
+  defaultPickupDetails?: Partial<DeliveryFormData>;
 }
 
 export interface DeliveryFormData {
@@ -87,6 +88,7 @@ export default function DeliveryForm({
   businessId,
   showBusinessSelector = false,
   showDeliveryFee = false,
+  defaultPickupDetails,
 }: DeliveryFormProps) {
   const [regions, setRegions] = useState<Region[]>([]);
   const [pickupDistricts, setPickupDistricts] = useState<District[]>([]);
@@ -96,8 +98,8 @@ export default function DeliveryForm({
   const [loadingBusinesses, setLoadingBusinesses] = useState(false);
   const [loadingPickupDistricts, setLoadingPickupDistricts] = useState(false);
   const [loadingDropoffDistricts, setLoadingDropoffDistricts] = useState(false);
-  const [pickupCollapsed, setPickupCollapsed] = useState(false);
-  const [pickupPreFilled, setPickupPreFilled] = useState(false);
+  const [pickupCollapsed, setPickupCollapsed] = useState(!!defaultPickupDetails);
+  const [pickupPreFilled, setPickupPreFilled] = useState(!!defaultPickupDetails);
   const [defaultPackageFee, setDefaultPackageFee] = useState<number>(0);
   const [pricePerKm, setPricePerKm] = useState<number>(2000);
   const [computedDistance, setComputedDistance] = useState<number | null>(null);
@@ -125,13 +127,13 @@ export default function DeliveryForm({
 
   const [formData, setFormData] = useState<DeliveryFormData>({
     business_id: businessId || undefined,
-    pickup_address: "",
-    pickup_latitude: null,
-    pickup_longitude: null,
-    pickup_name: "",
-    pickup_phone: "",
-    pickup_region_id: null,
-    pickup_district_id: null,
+    pickup_address: defaultPickupDetails?.pickup_address || "",
+    pickup_latitude: defaultPickupDetails?.pickup_latitude || null,
+    pickup_longitude: defaultPickupDetails?.pickup_longitude || null,
+    pickup_name: defaultPickupDetails?.pickup_name || "",
+    pickup_phone: defaultPickupDetails?.pickup_phone || "",
+    pickup_region_id: defaultPickupDetails?.pickup_region_id || null,
+    pickup_district_id: defaultPickupDetails?.pickup_district_id || null,
     dropoff_address: "",
     dropoff_latitude: null,
     dropoff_longitude: null,
@@ -140,7 +142,7 @@ export default function DeliveryForm({
     dropoff_region_id: null,
     dropoff_district_id: null,
     package_description: "",
-    delivery_fee: 0,
+    delivery_fee: defaultPickupDetails?.delivery_fee || 0,
     created_at: getCurrentLocalDatetime(),
   });
 
@@ -502,8 +504,158 @@ export default function DeliveryForm({
 
       {/* Pickup and Dropoff - Side by Side */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Pickup Details - Left Column */}
-        <div className="bg-green-50/50 rounded-xl p-5 border border-green-100">
+        {/* Dropoff Details - Left Column (Now visually first) */}
+        <div className="bg-blue-50/50 rounded-xl p-5 border border-blue-100 flex flex-col">
+          <div className={sectionHeaderClass}>
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <MapPin className="w-5 h-5 text-blue-600" />
+            </div>
+            <span>Where to? (Drop-off)</span>
+          </div>
+
+          <div className="space-y-4 flex-1">
+            <div className={formData.dropoff_address ? "order-1" : "order-1"}>
+              {isLoaded ? (
+                <LocationPicker
+                  label="Drop-off Address *"
+                  value={formData.dropoff_address}
+                  onChange={(address, lat, lng) =>
+                    setFormData({
+                      ...formData,
+                      dropoff_address: address,
+                      dropoff_latitude: lat,
+                      dropoff_longitude: lng,
+                    })
+                  }
+                  autoFocus={true}
+                  error={
+                    formData.dropoff_address ? undefined : "Address is required"
+                  }
+                />
+              ) : (
+                <>
+                  <label className={labelClass}>
+                    <span className="flex items-center gap-1.5">
+                      <MapPin className="w-4 h-4 text-gray-400" />
+                      Address <span className="text-red-500">*</span>
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.dropoff_address}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        dropoff_address: e.target.value,
+                      })
+                    }
+                    required
+                    placeholder="Street address, building, etc."
+                    className={inputClass}
+                  />
+                </>
+              )}
+            </div>
+
+            {formData.dropoff_address && (
+              <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div>
+                  <label className={labelClass}>Region</label>
+                  <select
+                    value={formData.dropoff_region_id || ""}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        dropoff_region_id: e.target.value
+                          ? parseInt(e.target.value)
+                          : null,
+                      })
+                    }
+                    disabled={loadingRegions}
+                    className={inputClass}
+                  >
+                    <option value="">Select region</option>
+                    {regions.map((region) => (
+                      <option key={region.id} value={region.id}>
+                        {region.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelClass}>District</label>
+                  <select
+                    value={formData.dropoff_district_id || ""}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        dropoff_district_id: e.target.value
+                          ? parseInt(e.target.value)
+                          : null,
+                      })
+                    }
+                    disabled={
+                      !formData.dropoff_region_id || loadingDropoffDistricts
+                    }
+                    className={inputClass}
+                  >
+                    <option value="">Select district</option>
+                    {dropoffDistricts.map((district) => (
+                      <option key={district.id} value={district.id}>
+                        {district.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {formData.dropoff_address && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                <label className={labelClass}>
+                  <span className="flex items-center gap-1.5">
+                    <User className="w-4 h-4 text-gray-400" />
+                    Recipient Name <span className="text-red-500">*</span>
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.dropoff_name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, dropoff_name: e.target.value })
+                  }
+                  required
+                  placeholder="Who to deliver to"
+                  className={inputClass}
+                />
+              </div>
+            )}
+
+            {formData.dropoff_name && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                <label className={labelClass}>
+                  <span className="flex items-center gap-1.5">
+                    <Phone className="w-4 h-4 text-gray-400" />
+                    Phone Number <span className="text-red-500">*</span>
+                  </span>
+                </label>
+                <input
+                  type="tel"
+                  value={formData.dropoff_phone}
+                  onChange={(e) =>
+                    setFormData({ ...formData, dropoff_phone: e.target.value })
+                  }
+                  required
+                  placeholder="+255..."
+                  className={inputClass}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Pickup Details - Right Column (Now visually second) */}
+        <div className="bg-green-50/50 rounded-xl p-5 border border-green-100 flex flex-col">
           <button
             type="button"
             onClick={() => setPickupCollapsed(!pickupCollapsed)}
@@ -682,149 +834,6 @@ export default function DeliveryForm({
                 >
                   <option value="">Select district</option>
                   {pickupDistricts.map((district) => (
-                    <option key={district.id} value={district.id}>
-                      {district.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Dropoff Details - Right Column */}
-        <div className="bg-blue-50/50 rounded-xl p-5 border border-blue-100">
-          <div className={sectionHeaderClass}>
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <MapPin className="w-5 h-5 text-blue-600" />
-            </div>
-            <span>Drop-off Details</span>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label className={labelClass}>
-                <span className="flex items-center gap-1.5">
-                  <User className="w-4 h-4 text-gray-400" />
-                  Recipient Name <span className="text-red-500">*</span>
-                </span>
-              </label>
-              <input
-                type="text"
-                value={formData.dropoff_name}
-                onChange={(e) =>
-                  setFormData({ ...formData, dropoff_name: e.target.value })
-                }
-                required
-                placeholder="Who to deliver to"
-                className={inputClass}
-              />
-            </div>
-
-            <div>
-              <label className={labelClass}>
-                <span className="flex items-center gap-1.5">
-                  <Phone className="w-4 h-4 text-gray-400" />
-                  Phone Number <span className="text-red-500">*</span>
-                </span>
-              </label>
-              <input
-                type="tel"
-                value={formData.dropoff_phone}
-                onChange={(e) =>
-                  setFormData({ ...formData, dropoff_phone: e.target.value })
-                }
-                required
-                placeholder="+255..."
-                className={inputClass}
-              />
-            </div>
-
-            <div>
-              {isLoaded ? (
-                <LocationPicker
-                  label="Drop-off Address *"
-                  value={formData.dropoff_address}
-                  onChange={(address, lat, lng) =>
-                    setFormData({
-                      ...formData,
-                      dropoff_address: address,
-                      dropoff_latitude: lat,
-                      dropoff_longitude: lng,
-                    })
-                  }
-                  error={
-                    formData.dropoff_address ? undefined : "Address is required"
-                  }
-                />
-              ) : (
-                <>
-                  <label className={labelClass}>
-                    <span className="flex items-center gap-1.5">
-                      <MapPin className="w-4 h-4 text-gray-400" />
-                      Address <span className="text-red-500">*</span>
-                    </span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.dropoff_address}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        dropoff_address: e.target.value,
-                      })
-                    }
-                    required
-                    placeholder="Street address, building, etc."
-                    className={inputClass}
-                  />
-                </>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={labelClass}>Region</label>
-                <select
-                  value={formData.dropoff_region_id || ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      dropoff_region_id: e.target.value
-                        ? parseInt(e.target.value)
-                        : null,
-                    })
-                  }
-                  disabled={loadingRegions}
-                  className={inputClass}
-                >
-                  <option value="">Select region</option>
-                  {regions.map((region) => (
-                    <option key={region.id} value={region.id}>
-                      {region.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className={labelClass}>District</label>
-                <select
-                  value={formData.dropoff_district_id || ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      dropoff_district_id: e.target.value
-                        ? parseInt(e.target.value)
-                        : null,
-                    })
-                  }
-                  disabled={
-                    !formData.dropoff_region_id || loadingDropoffDistricts
-                  }
-                  className={inputClass}
-                >
-                  <option value="">Select district</option>
-                  {dropoffDistricts.map((district) => (
                     <option key={district.id} value={district.id}>
                       {district.name}
                     </option>
