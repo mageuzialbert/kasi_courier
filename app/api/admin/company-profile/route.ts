@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
       postal_code,
       website,
       tax_id,
+      price_per_km,
     } = body;
 
     if (!company_name) {
@@ -96,6 +97,7 @@ export async function POST(request: NextRequest) {
         postal_code: postal_code || null,
         website: website || null,
         tax_id: tax_id || null,
+        price_per_km: price_per_km !== undefined && price_per_km !== null ? parseFloat(price_per_km) : undefined,
       }, {
         onConflict: 'id'
       })

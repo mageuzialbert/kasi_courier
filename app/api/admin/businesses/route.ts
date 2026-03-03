@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser, supabaseAdmin } from "@/lib/auth-server";
 import { requirePermission } from "@/lib/permissions-server";
+import { sendEventNotification } from "@/lib/notifications";
+
+const COMPANY_PROFILE_ID = "00000000-0000-0000-0000-000000000001";
 
 // GET - List all businesses
 export async function GET(request: NextRequest) {
@@ -307,6 +310,24 @@ export async function POST(request: NextRequest) {
         { error: businessError.message },
         { status: 500 },
       );
+    }
+
+    // Try to notify admin
+    try {
+      const { data: companyProfile } = await supabaseAdmin
+        .from("company_profile")
+        .select("phone")
+        .eq("id", COMPANY_PROFILE_ID)
+        .single();
+        
+      if (companyProfile?.phone) {
+        await sendEventNotification('admin_new_business_registered', companyProfile.phone, {
+          business_name: name,
+          contact_phone: phoneNumber
+        });
+      }
+    } catch (notifyErr) {
+      console.error("Failed to notify admin of new business:", notifyErr);
     }
 
     return NextResponse.json({

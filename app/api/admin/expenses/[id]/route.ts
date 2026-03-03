@@ -16,7 +16,7 @@ export async function PUT(
       );
     }
 
-    const { category_id, supplier_id, amount, description, expense_date } = await request.json();
+    const { category_id, supplier_id, amount, description, expense_date, is_salary, rider_id, staff_id } = await request.json();
 
     // Build update object
     const updates: any = {};
@@ -32,35 +32,44 @@ export async function PUT(
       updates.amount = expenseAmount;
     }
     if (description !== undefined) updates.description = description;
+    if (is_salary !== undefined) {
+      updates.is_salary = is_salary;
+      updates.rider_id = is_salary && rider_id ? rider_id : null;
+      updates.staff_id = is_salary && staff_id ? staff_id : null;
+    }
     if (supplier_id !== undefined) {
-      if (!supplier_id) {
+      if (!supplier_id && !is_salary) {
         return NextResponse.json(
-          { error: 'Supplier is required' },
+          { error: 'Supplier is required for non-salary expenses' },
           { status: 400 }
         );
       }
 
-      const { data: supplierData, error: supplierError } = await supabaseAdmin
-        .from('suppliers')
-        .select('id, active')
-        .eq('id', supplier_id)
-        .single();
+      if (supplier_id) {
+        const { data: supplierData, error: supplierError } = await supabaseAdmin
+          .from('suppliers')
+          .select('id, active')
+          .eq('id', supplier_id)
+          .single();
 
-      if (supplierError || !supplierData) {
-        return NextResponse.json(
-          { error: 'Invalid supplier selected' },
-          { status: 400 }
-        );
+        if (supplierError || !supplierData) {
+          return NextResponse.json(
+            { error: 'Invalid supplier selected' },
+            { status: 400 }
+          );
+        }
+
+        if (!supplierData.active) {
+          return NextResponse.json(
+            { error: 'Selected supplier is inactive' },
+            { status: 400 }
+          );
+        }
+
+        updates.supplier_id = supplier_id;
+      } else {
+        updates.supplier_id = null;
       }
-
-      if (!supplierData.active) {
-        return NextResponse.json(
-          { error: 'Selected supplier is inactive' },
-          { status: 400 }
-        );
-      }
-
-      updates.supplier_id = supplier_id;
     }
     if (expense_date !== undefined) updates.expense_date = expense_date;
 
@@ -84,6 +93,16 @@ export async function PUT(
         users:created_by (
           id,
           name
+        ),
+        rider:rider_id (
+          id,
+          name,
+          phone
+        ),
+        staff:staff_id (
+          id,
+          name,
+          phone
         )
       `)
       .single();

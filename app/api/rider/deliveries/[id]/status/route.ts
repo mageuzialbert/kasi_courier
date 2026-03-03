@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser, supabaseAdmin } from '@/lib/auth-server';
 import { requirePermission } from '@/lib/permissions-server';
+import { sendEventNotification } from '@/lib/notifications';
 
 // Valid status transitions for riders
 // Note: PENDING_CONFIRMATION can only be changed by staff/admin via the confirm endpoint
@@ -59,7 +60,7 @@ export async function PUT(
     // Verify delivery exists and is assigned to this rider
     const { data: delivery, error: deliveryError } = await supabaseAdmin
       .from('deliveries')
-      .select('id, status, assigned_rider_id')
+      .select('id, status, assigned_rider_id, pickup_phone, pickup_name, businesses(name)')
       .eq('id', params.id)
       .single();
 
@@ -129,10 +130,19 @@ export async function PUT(
         created_by: user.id,
       });
 
-    // TODO: Send SMS notifications based on status
-    // - PICKED_UP → Send to dropoff customer
-    // - DELIVERED → Send to business + customer
-    // - FAILED → Send to business
+    // Send SMS notifications based on status
+    if (status === 'DELIVERED') {
+      try {
+        if (delivery.pickup_phone) {
+          await sendEventNotification('client_order_delivered', delivery.pickup_phone, {
+            client_name: delivery.pickup_name || 'Valued Client',
+            business_name: (delivery.businesses as any)?.name || 'Kasi Courier'
+          });
+        }
+      } catch (smsErr) {
+        console.error('Failed to send delivery notification:', smsErr);
+      }
+    }
 
     return NextResponse.json({
       success: true,

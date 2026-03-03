@@ -22,6 +22,8 @@ import {
   FolderOpen,
   ChevronRight,
   ChevronDown,
+  Bell,
+  Send,
 } from "lucide-react";
 import { getCurrentUser, logout } from "@/lib/auth";
 import { getUserRole } from "@/lib/roles";
@@ -127,6 +129,8 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       icon: BarChart3,
       children: [
         { href: "/dashboard/staff/deliveries", label: "Deliveries", icon: Package },
+        { href: "/dashboard/admin/operations/notifications", label: "Notifications", icon: Bell },
+        { href: "/dashboard/staff/operations/custom-sms", label: "Custom SMS", icon: Send },
       ],
     },
     {
@@ -134,9 +138,10 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       label: "Financials",
       icon: Receipt,
       children: [
-        { href: "/dashboard/staff/deliveries", label: "Revenue", icon: BarChart3 },
+        { href: "/dashboard/staff/financial", label: "Revenue", icon: BarChart3 },
         { href: "/dashboard/admin/expenses", label: "Expenses", icon: BarChart3 },
         { href: "/dashboard/admin/invoices", label: "Invoice", icon: FileText },
+        { href: "/dashboard/admin/riders", label: "Riders", icon: BarChart3 },
       ],
     },
     {
@@ -186,6 +191,9 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       label: "Operations",
       icon: BarChart3,
       modules: ["operations"],
+      children: [
+        { href: "/dashboard/staff/operations/custom-sms", label: "Custom SMS", icon: Send, modules: ["operations"] },
+      ]
     },
     {
       href: "/dashboard/staff/financial",

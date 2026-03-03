@@ -16,6 +16,9 @@ interface Expense {
   expense_date: string;
   created_by: string;
   created_at: string;
+  is_salary?: boolean;
+  rider_id?: string | null;
+  staff_id?: string | null;
   expense_categories?: {
     id: string;
     name: string;
@@ -31,6 +34,16 @@ interface Expense {
     id: string;
     name: string;
   };
+  rider?: {
+    id: string;
+    name: string;
+    phone: string;
+  };
+  staff?: {
+    id: string;
+    name: string;
+    phone: string;
+  };
 }
 
 interface ExpenseCategory {
@@ -45,6 +58,16 @@ interface ExpenseFormData {
   amount: string;
   description: string;
   expense_date: string;
+  is_salary: boolean;
+  rider_id: string;
+  staff_id: string;
+}
+
+interface RiderOrStaff {
+  id: string;
+  name: string;
+  phone: string;
+  role?: string;
 }
 
 interface Supplier {
@@ -72,6 +95,7 @@ export default function AdminExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [ridersAndStaff, setRidersAndStaff] = useState<RiderOrStaff[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [showSupplierModal, setShowSupplierModal] = useState(false);
@@ -93,6 +117,9 @@ export default function AdminExpensesPage() {
     amount: '',
     description: '',
     expense_date: new Date().toISOString().split('T')[0],
+    is_salary: false,
+    rider_id: '',
+    staff_id: '',
   });
 
   useEffect(() => {
@@ -105,6 +132,7 @@ export default function AdminExpensesPage() {
       setRole(userRole);
       loadCategories();
       loadSuppliers();
+      loadRidersAndStaff();
       loadExpenses();
     }
     checkRole();
@@ -131,6 +159,30 @@ export default function AdminExpensesPage() {
       }
     } catch (error) {
       console.error('Error loading suppliers:', error);
+    }
+  }
+
+  async function loadRidersAndStaff() {
+    try {
+      // Load riders
+      const ridersRes = await fetch('/api/admin/riders?active=true');
+      let ridersList: RiderOrStaff[] = [];
+      if (ridersRes.ok) {
+        const data = await ridersRes.json();
+        ridersList = data.map((r: any) => ({ ...r, role: 'RIDER' }));
+      }
+      // Load staff from users API
+      const staffRes = await fetch('/api/admin/users?limit=1000&active=true');
+      let staffList: RiderOrStaff[] = [];
+      if (staffRes.ok) {
+        const data = await staffRes.json();
+        staffList = data
+          .filter((u: any) => u.role === 'STAFF')
+          .map((u: any) => ({ id: u.id, name: u.name, phone: u.phone, role: 'STAFF' }));
+      }
+      setRidersAndStaff([...ridersList, ...staffList]);
+    } catch (error) {
+      console.error('Error loading riders and staff:', error);
     }
   }
 
@@ -170,6 +222,9 @@ export default function AdminExpensesPage() {
       amount: '',
       description: '',
       expense_date: new Date().toISOString().split('T')[0],
+      is_salary: false,
+      rider_id: '',
+      staff_id: '',
     });
     setError('');
     setShowForm(true);
@@ -183,6 +238,9 @@ export default function AdminExpensesPage() {
       amount: expense.amount.toString(),
       description: expense.description || '',
       expense_date: expense.expense_date,
+      is_salary: expense.is_salary || false,
+      rider_id: expense.rider_id || '',
+      staff_id: expense.staff_id || '',
     });
     setError('');
     setShowForm(true);
@@ -198,8 +256,12 @@ export default function AdminExpensesPage() {
         throw new Error('Category is required');
       }
 
-      if (!formData.supplier_id) {
-        throw new Error('Supplier is required');
+      if (!formData.is_salary && !formData.supplier_id) {
+        throw new Error('Supplier is required for non-salary expenses');
+      }
+
+      if (formData.is_salary && !formData.rider_id && !formData.staff_id) {
+        throw new Error('Please select a rider or staff member for salary expenses');
       }
 
       const amount = parseFloat(formData.amount);
@@ -217,10 +279,13 @@ export default function AdminExpensesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           category_id: formData.category_id,
-          supplier_id: formData.supplier_id,
+          supplier_id: formData.supplier_id || null,
           amount: amount,
           description: formData.description || null,
           expense_date: formData.expense_date,
+          is_salary: formData.is_salary,
+          rider_id: formData.is_salary ? formData.rider_id || null : null,
+          staff_id: formData.is_salary ? formData.staff_id || null : null,
         }),
       });
 
@@ -418,7 +483,10 @@ export default function AdminExpensesPage() {
                 Description
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Supplier
+                Supplier / Assignee
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Type
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Amount
@@ -434,7 +502,7 @@ export default function AdminExpensesPage() {
           <tbody className="bg-white divide-y divide-gray-200">
             {expenses.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+              <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
                   No expenses found
                 </td>
               </tr>
@@ -454,7 +522,14 @@ export default function AdminExpensesPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-500">
-                      {expense.supplier_id ? (
+                      {expense.is_salary ? (
+                        <span>
+                          {expense.rider?.name || expense.staff?.name || '-'}
+                          <span className="text-xs text-gray-400 ml-1">
+                            ({expense.rider ? 'Rider' : expense.staff ? 'Staff' : ''})
+                          </span>
+                        </span>
+                      ) : expense.supplier_id ? (
                         <button
                           type="button"
                           onClick={() => handleSupplierClick(expense)}
@@ -466,6 +541,17 @@ export default function AdminExpensesPage() {
                         expense.suppliers?.name || expense.supplier || '-'
                       )}
                     </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {expense.is_salary ? (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                        Salary
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        Expense
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
@@ -563,15 +649,15 @@ export default function AdminExpensesPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Supplier *
+                  Supplier {!formData.is_salary && '*'}
                 </label>
                 <select
                   value={formData.supplier_id}
                   onChange={(e) => setFormData({ ...formData, supplier_id: e.target.value })}
-                  required
+                  required={!formData.is_salary}
                   className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
                 >
-                  <option value="">Select Supplier</option>
+                  <option value="">{formData.is_salary ? 'No Supplier (Salary)' : 'Select Supplier'}</option>
                   {suppliers.map((supplier) => (
                     <option key={supplier.id} value={supplier.id}>
                       {supplier.name}
@@ -586,6 +672,76 @@ export default function AdminExpensesPage() {
                   .
                 </div>
               </div>
+
+              {/* Salary checkbox */}
+              <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_salary}
+                    onChange={(e) => {
+                      const isSalary = e.target.checked;
+                      setFormData({
+                        ...formData,
+                        is_salary: isSalary,
+                        rider_id: isSalary ? formData.rider_id : '',
+                        staff_id: isSalary ? formData.staff_id : '',
+                        supplier_id: isSalary ? '' : formData.supplier_id,
+                      });
+                    }}
+                    className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                  />
+                  <span className="text-sm font-medium text-gray-700">Mark as Salary</span>
+                </label>
+                <p className="text-xs text-gray-500 mt-1 ml-6">
+                  Check this if the expense is a salary payment to a rider or staff member.
+                </p>
+              </div>
+
+              {/* Rider/Staff dropdown (only visible when is_salary) */}
+              {formData.is_salary && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Attach to Rider or Staff *
+                  </label>
+                  <select
+                    value={formData.rider_id || formData.staff_id || ''}
+                    onChange={(e) => {
+                      const selectedId = e.target.value;
+                      const selectedPerson = ridersAndStaff.find((p) => p.id === selectedId);
+                      if (selectedPerson?.role === 'RIDER') {
+                        setFormData({ ...formData, rider_id: selectedId, staff_id: '' });
+                      } else if (selectedPerson?.role === 'STAFF') {
+                        setFormData({ ...formData, staff_id: selectedId, rider_id: '' });
+                      } else {
+                        setFormData({ ...formData, rider_id: '', staff_id: '' });
+                      }
+                    }}
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
+                  >
+                    <option value="">Select Rider or Staff</option>
+                    <optgroup label="Riders">
+                      {ridersAndStaff
+                        .filter((p) => p.role === 'RIDER')
+                        .map((person) => (
+                          <option key={person.id} value={person.id}>
+                            {person.name} ({person.phone})
+                          </option>
+                        ))}
+                    </optgroup>
+                    <optgroup label="Staff">
+                      {ridersAndStaff
+                        .filter((p) => p.role === 'STAFF')
+                        .map((person) => (
+                          <option key={person.id} value={person.id}>
+                            {person.name} ({person.phone})
+                          </option>
+                        ))}
+                    </optgroup>
+                  </select>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">

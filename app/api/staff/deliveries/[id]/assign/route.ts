@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser, supabaseAdmin } from "@/lib/auth-server";
 import { sendSMS } from "@/lib/sms";
+import { sendEventNotification } from "@/lib/notifications";
 
 // PUT - Assign rider to delivery
 export async function PUT(
@@ -56,7 +57,7 @@ export async function PUT(
     // Verify delivery exists
     const { data: delivery, error: deliveryError } = await supabaseAdmin
       .from("deliveries")
-      .select("id, status, assigned_rider_id, created_by")
+      .select("id, status, assigned_rider_id, created_by, pickup_address, dropoff_address, businesses(name)")
       .eq("id", params.id)
       .single();
 
@@ -132,10 +133,12 @@ export async function PUT(
 
     // Send SMS notification to rider
     if (rider.phone) {
-      await sendSMS(
-        rider.phone,
-        `You have been assigned a new delivery (ID: ${params.id.substring(0, 8)}). Please check your dashboard app for details.`,
-      );
+      await sendEventNotification('rider_new_ride_assignment', rider.phone, {
+        rider_name: rider.name || "Rider",
+        pickup_address: delivery.pickup_address || "pickup location",
+        dropoff_address: delivery.dropoff_address || "destination",
+        business_name: (delivery.businesses as any)?.name || "the sender"
+      });
     }
 
     return NextResponse.json({

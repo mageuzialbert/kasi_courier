@@ -16,6 +16,7 @@ interface CompanyProfile {
   postal_code: string | null;
   website: string | null;
   tax_id: string | null;
+  price_per_km: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -39,6 +40,7 @@ export default function AdminCompanyProfilePage() {
     postal_code: '',
     website: '',
     tax_id: '',
+    price_per_km: '',
   });
 
   useEffect(() => {
@@ -63,6 +65,7 @@ export default function AdminCompanyProfilePage() {
           postal_code: data.postal_code || '',
           website: data.website || '',
           tax_id: data.tax_id || '',
+          price_per_km: data.price_per_km != null ? data.price_per_km.toString() : '2000',
         });
       }
     } catch (err) {
@@ -415,6 +418,31 @@ export default function AdminCompanyProfilePage() {
                 placeholder="For invoice display"
               />
             </div>
+          </div>
+        </div>
+
+        {/* Delivery Pricing */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-semibold mb-4">Delivery Pricing</h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Set the global rate used to calculate delivery fees based on distance.
+          </p>
+          <div className="max-w-xs">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Price Per Kilometer (TZS)
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="100"
+              value={formData.price_per_km}
+              onChange={(e) => setFormData({ ...formData, price_per_km: e.target.value })}
+              placeholder="2000"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+            />
+            <p className="text-xs text-gray-500 mt-2">
+              Delivery fee = distance (km) × this rate. Clients with a custom delivery fee will use their custom rate instead.
+            </p>
           </div>
         </div>
 

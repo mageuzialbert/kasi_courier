@@ -16,17 +16,10 @@ interface District {
   region_id: number;
 }
 
-interface DeliveryPackage {
-  id: string;
-  name: string;
-  description: string | null;
-  fee_per_delivery: number;
-  is_default: boolean;
-}
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [step, setStep] = useState(1); // 1 = Client Info, 2 = Account Info, 3 = Package Selection
+  const [step, setStep] = useState(1); // 1 = Client Info, 2 = Account Info
   const [formData, setFormData] = useState({
     businessName: '',
     email: '',
@@ -35,11 +28,9 @@ export default function RegisterPage() {
     confirmPassword: '',
     regionId: '',
     districtId: '',
-    packageId: '',
   });
   const [regions, setRegions] = useState<Region[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
-  const [packages, setPackages] = useState<DeliveryPackage[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -49,19 +40,6 @@ export default function RegisterPage() {
       .then(res => res.json())
       .then(data => setRegions(data))
       .catch(err => console.error('Error fetching regions:', err));
-
-    // Fetch delivery packages
-    fetch('/api/delivery-packages/public')
-      .then(res => res.json())
-      .then(data => {
-        setPackages(data);
-        // Set default package if available
-        const defaultPackage = data.find((pkg: DeliveryPackage) => pkg.is_default);
-        if (defaultPackage) {
-          setFormData(prev => ({ ...prev, packageId: defaultPackage.id }));
-        }
-      })
-      .catch(err => console.error('Error fetching packages:', err));
   }, []);
 
   useEffect(() => {
@@ -141,8 +119,6 @@ export default function RegisterPage() {
   const handleNext = () => {
     if (step === 1 && validateStep1()) {
       setStep(2);
-    } else if (step === 2 && validateStep2()) {
-      setStep(3);
     }
   };
 
@@ -153,23 +129,10 @@ export default function RegisterPage() {
     }
   };
 
-  const validateStep3 = () => {
-    setError('');
-    if (!formData.packageId) {
-      setError('Please select a delivery package');
-      return false;
-    }
-    return true;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (step === 3) {
-      if (!validateStep3()) {
-        return;
-      }
-    } else if (!validateStep2()) {
+    if (!validateStep2()) {
       return;
     }
 
@@ -191,7 +154,6 @@ export default function RegisterPage() {
         phone: phoneNumber,
         password: formData.password,
         districtId: parseInt(formData.districtId),
-        packageId: formData.packageId,
       });
       router.push('/dashboard/business');
     } catch (err) {
@@ -222,18 +184,12 @@ export default function RegisterPage() {
             <div className={`flex items-center justify-center w-8 h-8 rounded-full ${step >= 2 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'}`}>
               2
             </div>
-            <div className={`w-16 h-1 mx-2 ${step >= 3 ? 'bg-primary' : 'bg-gray-200'}`}></div>
-            <div className={`flex items-center justify-center w-8 h-8 rounded-full ${step >= 3 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'}`}>
-              3
-            </div>
           </div>
         </div>
         <div className="flex justify-center mb-6 text-sm text-gray-600">
           <span className={step === 1 ? 'font-semibold text-primary' : ''}>Client Info</span>
           <span className="mx-2">•</span>
           <span className={step === 2 ? 'font-semibold text-primary' : ''}>Account</span>
-          <span className="mx-2">•</span>
-          <span className={step === 3 ? 'font-semibold text-primary' : ''}>Package</span>
         </div>
 
         {error && (
@@ -403,76 +359,6 @@ export default function RegisterPage() {
                   Back
                 </button>
                 <button
-                  type="button"
-                  onClick={handleNext}
-                  className="flex-1 bg-primary text-white py-2 px-4 rounded-md hover:bg-primary-dark transition-colors font-medium"
-                >
-                  Next
-                </button>
-              </div>
-            </>
-          )}
-
-          {/* Step 3: Package Selection */}
-          {step === 3 && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Select Delivery Package *
-                </label>
-                <div className="space-y-3">
-                  {packages.map((pkg) => (
-                    <label
-                      key={pkg.id}
-                      className={`flex items-start p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                        formData.packageId === pkg.id
-                          ? 'border-primary bg-primary/5'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="packageId"
-                        value={pkg.id}
-                        checked={formData.packageId === pkg.id}
-                        onChange={(e) => setFormData({ ...formData, packageId: e.target.value })}
-                        className="mt-1 mr-3 text-primary focus:ring-primary"
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <span className="font-semibold text-gray-900">{pkg.name}</span>
-                          {pkg.is_default && (
-                            <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
-                              Default
-                            </span>
-                          )}
-                        </div>
-                        {pkg.description && (
-                          <p className="text-sm text-gray-600 mt-1">{pkg.description}</p>
-                        )}
-                        <p className="text-sm font-medium text-primary mt-1">
-                          {new Intl.NumberFormat('en-TZ', {
-                            style: 'currency',
-                            currency: 'TZS',
-                            minimumFractionDigits: 0,
-                          }).format(pkg.fee_per_delivery)}{' '}
-                          per delivery
-                        </p>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={handleBack}
-                  className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-300 transition-colors font-medium"
-                >
-                  Back
-                </button>
-                <button
                   type="submit"
                   disabled={loading}
                   className="flex-1 bg-primary text-white py-2 px-4 rounded-md hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
@@ -482,6 +368,7 @@ export default function RegisterPage() {
               </div>
             </>
           )}
+
         </form>
 
         {/* Login Link */}

@@ -175,6 +175,7 @@ function BusinessDeliveriesContent() {
           dropoff_region_id: formData.dropoff_region_id,
           dropoff_district_id: formData.dropoff_district_id,
           package_description: formData.package_description || null,
+          attachment_url: formData.attachment_url || null,
           delivery_fee: deliveryFee,
           status: 'CREATED',
           created_by: user.id,

@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { sendEventNotification } from '@/lib/notifications';
+import { calculateDistanceKm } from '@/lib/distance';
+
+const COMPANY_PROFILE_ID = "00000000-0000-0000-0000-000000000001";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -32,6 +36,7 @@ export async function POST(request: NextRequest) {
       dropoff_region_id,
       dropoff_district_id,
       package_description,
+      attachment_url,
     } = await request.json();
 
     // Validation
@@ -49,49 +54,52 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get business and its package to determine delivery fee
-    let deliveryFee = 0;
+    // Fetch global price_per_km from company profile
+    let pricePerKm = 2000; // default fallback
+    const { data: companyData } = await supabaseAdmin
+      .from('company_profile')
+      .select('price_per_km')
+      .eq('id', COMPANY_PROFILE_ID)
+      .single();
+    if (companyData?.price_per_km) {
+      pricePerKm = parseFloat(companyData.price_per_km.toString());
+    }
+
+    // Calculate distance from coordinates
+    let distanceKm: number | null = null;
+    if (pickup_latitude && pickup_longitude && dropoff_latitude && dropoff_longitude) {
+      distanceKm = calculateDistanceKm(
+        parseFloat(pickup_latitude.toString()),
+        parseFloat(pickup_longitude.toString()),
+        parseFloat(dropoff_latitude.toString()),
+        parseFloat(dropoff_longitude.toString()),
+      );
+    }
+
+    // Calculate per-km price
+    const kmPrice = distanceKm != null ? Math.round((distanceKm * pricePerKm) / 500) * 500 : 0;
+
+    // Determine pricing: check if business has custom fee
+    let pricingMethod: string;
+    let priceApplied: number;
+
     if (businessId) {
-      const { data: business, error: businessError } = await supabaseAdmin
+      const { data: business } = await supabaseAdmin
         .from('businesses')
-        .select(`
-          id,
-          package_id,
-          delivery_fee_packages:package_id (
-            id,
-            fee_per_delivery
-          )
-        `)
+        .select('id, delivery_fee')
         .eq('id', businessId)
         .single();
 
-      if (business && business.delivery_fee_packages) {
-        deliveryFee = parseFloat((business.delivery_fee_packages as any).fee_per_delivery.toString());
+      if (business?.delivery_fee) {
+        pricingMethod = 'CUSTOM_CLIENT';
+        priceApplied = parseFloat(business.delivery_fee.toString());
       } else {
-        // If business not found or no package, use default package
-        const { data: defaultPackage } = await supabaseAdmin
-          .from('delivery_fee_packages')
-          .select('fee_per_delivery')
-          .eq('is_default', true)
-          .eq('active', true)
-          .single();
-
-        if (defaultPackage) {
-          deliveryFee = parseFloat(defaultPackage.fee_per_delivery.toString());
-        }
+        pricingMethod = 'PER_KM';
+        priceApplied = kmPrice;
       }
     } else {
-      // No business ID, use default package
-      const { data: defaultPackage } = await supabaseAdmin
-        .from('delivery_fee_packages')
-        .select('fee_per_delivery')
-        .eq('is_default', true)
-        .eq('active', true)
-        .single();
-
-      if (defaultPackage) {
-        deliveryFee = parseFloat(defaultPackage.fee_per_delivery.toString());
-      }
+      pricingMethod = 'PER_KM';
+      priceApplied = kmPrice;
     }
 
     // Create delivery
@@ -114,6 +122,12 @@ export async function POST(request: NextRequest) {
         dropoff_region_id: dropoff_region_id || null,
         dropoff_district_id: dropoff_district_id || null,
         package_description: package_description || null,
+        attachment_url: attachment_url || null,
+        delivery_fee: priceApplied,
+        distance_km: distanceKm,
+        price_per_km_snapshot: pricePerKm,
+        price_applied: priceApplied,
+        pricing_method: pricingMethod,
         status: 'CREATED',
         created_by: userId,
       })
@@ -127,14 +141,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create charge with package fee
-    if (deliveryFee > 0 && businessId) {
+    // Create charge with delivery fee
+    if (priceApplied > 0 && businessId) {
       await supabaseAdmin
         .from('charges')
         .insert({
           delivery_id: deliveryData.id,
           business_id: businessId,
-          amount: deliveryFee,
+          amount: priceApplied,
           description: 'Delivery fee - Quick order',
         });
     }
@@ -149,11 +163,45 @@ export async function POST(request: NextRequest) {
         created_by: userId,
       });
 
+    // Send Notifications
+    // 1. Client Notification
+    try {
+      await sendEventNotification('client_new_order_created', pickup_phone, {
+        client_name: pickup_name,
+        business_name: 'the sender',
+        pickup_address: pickup_address,
+        dropoff_address: dropoff_address
+      });
+    } catch (err) {
+      console.error('Failed to send client notification:', err);
+    }
+
+    // 2. Admin Notification
+    try {
+      const { data: companyProfile } = await supabaseAdmin
+        .from("company_profile")
+        .select("phone")
+        .eq("id", COMPANY_PROFILE_ID)
+        .single();
+
+      if (companyProfile?.phone) {
+        await sendEventNotification('admin_new_delivery_order', companyProfile.phone, {
+          business_name: pickup_name,
+          pickup_address: pickup_address,
+          dropoff_address: dropoff_address
+        });
+      }
+    } catch (err) {
+      console.error('Failed to send admin notification:', err);
+    }
+
     return NextResponse.json({
       success: true,
       deliveryId: deliveryData.id,
       message: 'Delivery created successfully',
-      deliveryFee,
+      deliveryFee: priceApplied,
+      distanceKm,
+      pricingMethod,
     });
   } catch (error) {
     console.error('Error creating quick order:', error);
@@ -163,3 +211,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

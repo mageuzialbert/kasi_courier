@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLoadScript } from '@react-google-maps/api';
-import { Loader2, MapPin, User, Phone, Package, ChevronLeft, ChevronRight, Check, AlertCircle } from 'lucide-react';
+import { Loader2, MapPin, User, Phone, Package, ChevronLeft, ChevronRight, Check, AlertCircle, Camera, Paperclip, FileText, X, Navigation, DollarSign } from 'lucide-react';
 import LocationPicker from '@/components/common/LocationPicker';
+import { calculateDistanceKm } from '@/lib/distance';
 
 interface Region {
   id: number;
@@ -38,6 +39,7 @@ export interface DeliveryFormData {
   dropoff_region_id: number | null;
   dropoff_district_id: number | null;
   package_description: string;
+  attachment_url?: string;
 }
 
 type FormStep = 'pickup' | 'dropoff' | 'review';
@@ -55,6 +57,15 @@ export default function DeliveryForm({ onSubmit, loading, error }: DeliveryFormP
   const [dropoffDistricts, setDropoffDistricts] = useState<District[]>([]);
   const [loadingRegions, setLoadingRegions] = useState(true);
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const [pricePerKm, setPricePerKm] = useState<number>(2000);
+  const [computedDistance, setComputedDistance] = useState<number | null>(null);
+  const [computedKmPrice, setComputedKmPrice] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
@@ -96,6 +107,52 @@ export default function DeliveryForm({ onSubmit, loading, error }: DeliveryFormP
     }
     loadRegions();
   }, []);
+
+  // Load price per km
+  useEffect(() => {
+    async function loadPricePerKm() {
+      try {
+        const response = await fetch('/api/pricing');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.price_per_km) {
+            setPricePerKm(data.price_per_km);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading price per km:', error);
+      }
+    }
+    loadPricePerKm();
+  }, []);
+
+  // Compute distance and per-km price when both locations are set
+  useEffect(() => {
+    if (
+      formData.pickup_latitude &&
+      formData.pickup_longitude &&
+      formData.dropoff_latitude &&
+      formData.dropoff_longitude
+    ) {
+      const dist = calculateDistanceKm(
+        formData.pickup_latitude,
+        formData.pickup_longitude,
+        formData.dropoff_latitude,
+        formData.dropoff_longitude,
+      );
+      setComputedDistance(dist);
+      setComputedKmPrice(Math.round((dist * pricePerKm) / 500) * 500);
+    } else {
+      setComputedDistance(null);
+      setComputedKmPrice(null);
+    }
+  }, [
+    formData.pickup_latitude,
+    formData.pickup_longitude,
+    formData.dropoff_latitude,
+    formData.dropoff_longitude,
+    pricePerKm,
+  ]);
 
   // Load pickup districts
   useEffect(() => {
@@ -198,8 +255,68 @@ export default function DeliveryForm({ onSubmit, loading, error }: DeliveryFormP
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (uploadingAttachment) return;
     onSubmit(formData);
   };
+
+  async function handleAttachmentSelect(file: File) {
+    setAttachmentError(null);
+
+    if (file.size > 5 * 1024 * 1024) {
+      setAttachmentError('File size exceeds 5MB limit');
+      return;
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      setAttachmentError('Only images (JPEG, PNG, WebP) and PDF files are allowed');
+      return;
+    }
+
+    setAttachmentFile(file);
+
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onloadend = () => setAttachmentPreview(reader.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      setAttachmentPreview(null);
+    }
+
+    setUploadingAttachment(true);
+    try {
+      const uploadData = new FormData();
+      uploadData.append('file', file);
+
+      const response = await fetch('/api/deliveries/upload', {
+        method: 'POST',
+        body: uploadData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Upload failed');
+      }
+
+      const result = await response.json();
+      setFormData((prev) => ({ ...prev, attachment_url: result.url }));
+    } catch (err) {
+      setAttachmentError(err instanceof Error ? err.message : 'Upload failed');
+      setAttachmentFile(null);
+      setAttachmentPreview(null);
+    } finally {
+      setUploadingAttachment(false);
+    }
+  }
+
+  function handleRemoveAttachment() {
+    setAttachmentFile(null);
+    setAttachmentPreview(null);
+    setAttachmentError(null);
+    setFormData((prev) => ({ ...prev, attachment_url: undefined }));
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
+  }
 
   const getCurrentStepIndex = () => STEPS.findIndex(s => s.key === currentStep);
 
@@ -596,6 +713,28 @@ export default function DeliveryForm({ onSubmit, loading, error }: DeliveryFormP
               </div>
             </div>
 
+            {/* Delivery Price */}
+            {computedDistance != null && computedKmPrice != null && (
+              <div className="bg-purple-50 rounded-xl p-4 border border-purple-100">
+                <div className="flex items-center gap-2 text-purple-700 font-medium mb-3">
+                  <DollarSign className="w-5 h-5" />
+                  Delivery Price
+                </div>
+                <div className="space-y-1.5 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Navigation className="w-4 h-4 text-purple-500" />
+                    <span className="text-gray-700">Distance: <span className="font-medium">{computedDistance.toFixed(1)} km</span></span>
+                  </div>
+                  <p className="text-xl font-bold text-purple-800">
+                    TZS {computedKmPrice.toLocaleString()}
+                  </p>
+                  <p className="text-xs text-purple-600">
+                    {computedDistance.toFixed(1)} km × TZS {pricePerKm.toLocaleString()}/km
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Package Description */}
             <div>
               <label className={labelClass}>
@@ -611,6 +750,109 @@ export default function DeliveryForm({ onSubmit, loading, error }: DeliveryFormP
                 placeholder="Describe your package (e.g., documents, food, electronics...)"
                 className={`${inputClass} resize-none`}
               />
+            </div>
+
+            {/* Attachment */}
+            <div>
+              <label className={labelClass}>
+                <span className="flex items-center gap-2">
+                  <Paperclip className="w-4 h-4 text-gray-400" />
+                  Attachment (Optional)
+                </span>
+              </label>
+
+              {/* Hidden file inputs */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,.pdf"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleAttachmentSelect(file);
+                }}
+              />
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleAttachmentSelect(file);
+                }}
+              />
+
+              {attachmentError && (
+                <div className="mb-3 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  {attachmentError}
+                </div>
+              )}
+
+              {!attachmentFile && !uploadingAttachment ? (
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => cameraInputRef.current?.click()}
+                    className="flex-1 flex flex-col items-center gap-2 p-4 border-2 border-dashed border-gray-200 rounded-xl hover:border-primary hover:bg-primary/5 transition-all cursor-pointer group"
+                  >
+                    <div className="p-3 bg-gray-100 rounded-full group-hover:bg-primary/10 transition-colors">
+                      <Camera className="w-6 h-6 text-gray-500 group-hover:text-primary" />
+                    </div>
+                    <span className="text-sm font-medium text-gray-700">Take Photo</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex-1 flex flex-col items-center gap-2 p-4 border-2 border-dashed border-gray-200 rounded-xl hover:border-primary hover:bg-primary/5 transition-all cursor-pointer group"
+                  >
+                    <div className="p-3 bg-gray-100 rounded-full group-hover:bg-primary/10 transition-colors">
+                      <Paperclip className="w-6 h-6 text-gray-500 group-hover:text-primary" />
+                    </div>
+                    <span className="text-sm font-medium text-gray-700">Browse Files</span>
+                  </button>
+                </div>
+              ) : uploadingAttachment ? (
+                <div className="flex items-center justify-center gap-3 p-6 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50">
+                  <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                  <span className="text-sm text-gray-700 font-medium">Uploading...</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-xl">
+                  {attachmentPreview ? (
+                    <img
+                      src={attachmentPreview}
+                      alt="Attachment preview"
+                      className="w-14 h-14 rounded-lg object-cover border border-gray-200"
+                    />
+                  ) : (
+                    <div className="w-14 h-14 rounded-lg bg-red-50 border border-red-200 flex items-center justify-center">
+                      <FileText className="w-6 h-6 text-red-500" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {attachmentFile?.name}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {attachmentFile && (attachmentFile.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRemoveAttachment}
+                    className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
+
+              <p className="mt-2 text-xs text-gray-500">
+                Max 5MB • Images (JPEG, PNG, WebP) or PDF
+              </p>
             </div>
           </div>
         )}

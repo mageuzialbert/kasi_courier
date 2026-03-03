@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLoadScript } from "@react-google-maps/api";
 import {
   Loader2,
@@ -15,8 +15,15 @@ import {
   Check,
   DollarSign,
   Calendar,
+  Camera,
+  Paperclip,
+  FileText,
+  X,
+  Image as ImageIcon,
+  Navigation,
 } from "lucide-react";
 import LocationPicker from "@/components/common/LocationPicker";
+import { calculateDistanceKm } from "@/lib/distance";
 
 interface Region {
   id: number;
@@ -38,11 +45,6 @@ interface Business {
   longitude?: number | null;
   district_id?: number | null;
   delivery_fee?: number | null;
-  package_id?: string | null;
-  delivery_fee_packages?: {
-    id: string;
-    fee_per_delivery: number;
-  } | null;
 }
 
 interface DeliveryFormProps {
@@ -74,6 +76,7 @@ export interface DeliveryFormData {
   package_description: string;
   delivery_fee?: number;
   created_at?: string;
+  attachment_url?: string;
 }
 
 export default function DeliveryForm({
@@ -96,6 +99,16 @@ export default function DeliveryForm({
   const [pickupCollapsed, setPickupCollapsed] = useState(false);
   const [pickupPreFilled, setPickupPreFilled] = useState(false);
   const [defaultPackageFee, setDefaultPackageFee] = useState<number>(0);
+  const [pricePerKm, setPricePerKm] = useState<number>(2000);
+  const [computedDistance, setComputedDistance] = useState<number | null>(null);
+  const [computedKmPrice, setComputedKmPrice] = useState<number | null>(null);
+  const [selectedBusinessCustomFee, setSelectedBusinessCustomFee] = useState<number | null>(null);
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
@@ -138,8 +151,9 @@ export default function DeliveryForm({
     if (!selectedBusinessId) {
       setPickupPreFilled(false);
       setPickupCollapsed(false);
-      // Reset to default package fee when no business selected
-      setFormData((prev) => ({ ...prev, delivery_fee: defaultPackageFee }));
+      setSelectedBusinessCustomFee(null);
+      // Reset to per-km price or 0 if no distance
+      setFormData((prev) => ({ ...prev, delivery_fee: computedKmPrice ?? 0 }));
       return;
     }
 
@@ -150,17 +164,15 @@ export default function DeliveryForm({
 
     if (selectedBusiness) {
       // Determine delivery fee for this business
-      let businessDeliveryFee = defaultPackageFee;
+      let businessDeliveryFee = computedKmPrice ?? 0;
       if (selectedBusiness.delivery_fee) {
         // Use business's custom delivery fee
         businessDeliveryFee = parseFloat(
           selectedBusiness.delivery_fee.toString(),
         );
-      } else if (selectedBusiness.delivery_fee_packages?.fee_per_delivery) {
-        // Use business's package fee
-        businessDeliveryFee = parseFloat(
-          selectedBusiness.delivery_fee_packages.fee_per_delivery.toString(),
-        );
+        setSelectedBusinessCustomFee(businessDeliveryFee);
+      } else {
+        setSelectedBusinessCustomFee(null);
       }
 
       // Auto-populate pickup fields from client data
@@ -228,30 +240,58 @@ export default function DeliveryForm({
     loadRegions();
   }, []);
 
-  // Load default package fee on mount
+  // Load price per km on mount
   useEffect(() => {
-    async function loadDefaultPackageFee() {
+    async function loadPricePerKm() {
       try {
-        const response = await fetch("/api/delivery-packages/public");
+        const response = await fetch("/api/pricing");
         if (response.ok) {
-          const packages = await response.json();
-          const defaultPkg = packages.find(
-            (p: { is_default: boolean; active: boolean }) =>
-              p.is_default && p.active,
-          );
-          if (defaultPkg) {
-            const fee = parseFloat(defaultPkg.fee_per_delivery.toString());
-            setDefaultPackageFee(fee);
-            // Set initial delivery fee to default package fee
-            setFormData((prev) => ({ ...prev, delivery_fee: fee }));
+          const data = await response.json();
+          if (data.price_per_km) {
+            setPricePerKm(data.price_per_km);
           }
         }
       } catch (error) {
-        console.error("Error loading default package fee:", error);
+        console.error("Error loading price per km:", error);
       }
     }
-    loadDefaultPackageFee();
+    loadPricePerKm();
   }, []);
+
+  // Compute distance and per-km price when both locations are set
+  useEffect(() => {
+    if (
+      formData.pickup_latitude &&
+      formData.pickup_longitude &&
+      formData.dropoff_latitude &&
+      formData.dropoff_longitude
+    ) {
+      const dist = calculateDistanceKm(
+        formData.pickup_latitude,
+        formData.pickup_longitude,
+        formData.dropoff_latitude,
+        formData.dropoff_longitude,
+      );
+      setComputedDistance(dist);
+      const price = Math.round((dist * pricePerKm) / 500) * 500;
+      setComputedKmPrice(price);
+
+      // Auto-fill delivery fee if no custom fee from client
+      if (!selectedBusinessCustomFee) {
+        setFormData((prev) => ({ ...prev, delivery_fee: price }));
+      }
+    } else {
+      setComputedDistance(null);
+      setComputedKmPrice(null);
+    }
+  }, [
+    formData.pickup_latitude,
+    formData.pickup_longitude,
+    formData.dropoff_latitude,
+    formData.dropoff_longitude,
+    pricePerKm,
+    selectedBusinessCustomFee,
+  ]);
 
   useEffect(() => {
     if (showBusinessSelector) {
@@ -330,7 +370,71 @@ export default function DeliveryForm({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (uploadingAttachment) return;
     onSubmit(formData);
+  }
+
+  async function handleAttachmentSelect(file: File) {
+    setAttachmentError(null);
+
+    // Validate size
+    if (file.size > 5 * 1024 * 1024) {
+      setAttachmentError("File size exceeds 5MB limit");
+      return;
+    }
+
+    // Validate type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      setAttachmentError("Only images (JPEG, PNG, WebP) and PDF files are allowed");
+      return;
+    }
+
+    setAttachmentFile(file);
+
+    // Create preview
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onloadend = () => setAttachmentPreview(reader.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      setAttachmentPreview(null);
+    }
+
+    // Upload immediately
+    setUploadingAttachment(true);
+    try {
+      const uploadData = new FormData();
+      uploadData.append('file', file);
+
+      const response = await fetch('/api/deliveries/upload', {
+        method: 'POST',
+        body: uploadData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Upload failed');
+      }
+
+      const result = await response.json();
+      setFormData((prev) => ({ ...prev, attachment_url: result.url }));
+    } catch (err) {
+      setAttachmentError(err instanceof Error ? err.message : 'Upload failed');
+      setAttachmentFile(null);
+      setAttachmentPreview(null);
+    } finally {
+      setUploadingAttachment(false);
+    }
+  }
+
+  function handleRemoveAttachment() {
+    setAttachmentFile(null);
+    setAttachmentPreview(null);
+    setAttachmentError(null);
+    setFormData((prev) => ({ ...prev, attachment_url: undefined }));
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
   }
 
   const inputClass =
@@ -754,6 +858,110 @@ export default function DeliveryForm({
         />
       </div>
 
+      {/* Attachment */}
+      <div className="bg-indigo-50/50 rounded-xl p-5 border border-indigo-100">
+        <div className={sectionHeaderClass}>
+          <div className="p-2 bg-indigo-100 rounded-lg">
+            <Paperclip className="w-5 h-5 text-indigo-600" />
+          </div>
+          <span>Attachment</span>
+          <span className="text-xs text-gray-400 font-normal ml-1">(Optional)</span>
+        </div>
+
+        {/* Hidden file inputs */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,.pdf"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleAttachmentSelect(file);
+          }}
+        />
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleAttachmentSelect(file);
+          }}
+        />
+
+        {attachmentError && (
+          <div className="mb-3 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            {attachmentError}
+          </div>
+        )}
+
+        {!attachmentFile && !uploadingAttachment ? (
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => cameraInputRef.current?.click()}
+              className="flex-1 flex flex-col items-center gap-2 p-4 border-2 border-dashed border-indigo-200 rounded-xl hover:border-indigo-400 hover:bg-indigo-50 transition-all cursor-pointer group"
+            >
+              <div className="p-3 bg-indigo-100 rounded-full group-hover:bg-indigo-200 transition-colors">
+                <Camera className="w-6 h-6 text-indigo-600" />
+              </div>
+              <span className="text-sm font-medium text-gray-700">Take Photo</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex-1 flex flex-col items-center gap-2 p-4 border-2 border-dashed border-indigo-200 rounded-xl hover:border-indigo-400 hover:bg-indigo-50 transition-all cursor-pointer group"
+            >
+              <div className="p-3 bg-indigo-100 rounded-full group-hover:bg-indigo-200 transition-colors">
+                <Paperclip className="w-6 h-6 text-indigo-600" />
+              </div>
+              <span className="text-sm font-medium text-gray-700">Browse Files</span>
+            </button>
+          </div>
+        ) : uploadingAttachment ? (
+          <div className="flex items-center justify-center gap-3 p-6 border-2 border-dashed border-indigo-200 rounded-xl bg-indigo-50/50">
+            <Loader2 className="w-5 h-5 animate-spin text-indigo-600" />
+            <span className="text-sm text-indigo-700 font-medium">Uploading...</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 p-3 bg-white border border-indigo-200 rounded-xl">
+            {attachmentPreview ? (
+              <img
+                src={attachmentPreview}
+                alt="Attachment preview"
+                className="w-14 h-14 rounded-lg object-cover border border-gray-200"
+              />
+            ) : (
+              <div className="w-14 h-14 rounded-lg bg-red-50 border border-red-200 flex items-center justify-center">
+                <FileText className="w-6 h-6 text-red-500" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {attachmentFile?.name}
+              </p>
+              <p className="text-xs text-gray-500">
+                {attachmentFile && (attachmentFile.size / 1024 / 1024).toFixed(2)} MB
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleRemoveAttachment}
+              className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        )}
+
+        <p className="mt-2 text-xs text-gray-500">
+          Max 5MB • Images (JPEG, PNG, WebP) or PDF
+        </p>
+      </div>
+
       {/* Delivery Fee - Only shown when showDeliveryFee is true */}
       {showDeliveryFee && (
         <div className="bg-purple-50/50 rounded-xl p-5 border border-purple-100">
@@ -763,6 +971,39 @@ export default function DeliveryForm({
             </div>
             <span>Delivery Fee</span>
           </div>
+
+          {/* Distance & Per-KM Price */}
+          {computedDistance != null && computedKmPrice != null && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center gap-2 mb-1">
+                <Navigation className="w-4 h-4 text-blue-600" />
+                <span className="text-sm font-medium text-blue-800">
+                  Estimated distance: {computedDistance.toFixed(1)} km
+                </span>
+              </div>
+              <p className="text-sm text-blue-700">
+                Per-km price: <span className="font-semibold">TZS {computedKmPrice.toLocaleString()}</span>
+                <span className="text-xs text-blue-500 ml-1">
+                  ({computedDistance.toFixed(1)} km × TZS {pricePerKm.toLocaleString()}/km)
+                </span>
+              </p>
+            </div>
+          )}
+
+          {/* Custom fee comparison */}
+          {selectedBusinessCustomFee != null && computedKmPrice != null && (
+            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-sm text-amber-800">
+                <span className="font-medium">Client custom fee:</span> TZS {selectedBusinessCustomFee.toLocaleString()}
+                {selectedBusinessCustomFee !== computedKmPrice && (
+                  <span className="text-xs text-amber-600 ml-2">
+                    (Per-km would be TZS {computedKmPrice.toLocaleString()})
+                  </span>
+                )}
+              </p>
+            </div>
+          )}
+
           <div>
             <label className={labelClass}>
               <span className="flex items-center gap-1.5">
@@ -785,8 +1026,11 @@ export default function DeliveryForm({
               className={inputClass}
             />
             <p className="mt-1.5 text-xs text-gray-500">
-              Auto-filled from selected client package. You can adjust if
-              needed.
+              {selectedBusinessCustomFee != null
+                ? "Using client's custom delivery fee. You can adjust if needed."
+                : computedKmPrice != null
+                ? "Auto-calculated from distance. You can adjust if needed."
+                : "Set pickup and drop-off locations to auto-calculate."}
             </p>
           </div>
         </div>
