@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Plus, X, Loader2, RefreshCw } from "lucide-react";
+import { Plus, X, Loader2, RefreshCw, Building2, CalendarDays } from "lucide-react";
 import { getUserRole } from "@/lib/roles";
 import DeliveriesTable from "@/components/deliveries/DeliveriesTable";
 import DeliveryForm, {
@@ -37,6 +37,46 @@ interface Delivery {
   } | null;
 }
 
+interface Business {
+  id: string;
+  name: string;
+}
+
+type TimePeriod = "all" | "today" | "this_week" | "this_month" | "this_year" | "custom";
+
+function getDateRange(period: TimePeriod): { start_date: string; end_date: string } | null {
+  if (period === "all") return null;
+
+  const now = new Date();
+  let start: Date;
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+  switch (period) {
+    case "today":
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      break;
+    case "this_week": {
+      const day = now.getDay();
+      const diff = day === 0 ? 6 : day - 1;
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diff);
+      break;
+    }
+    case "this_month":
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      break;
+    case "this_year":
+      start = new Date(now.getFullYear(), 0, 1);
+      break;
+    default:
+      return null;
+  }
+
+  return {
+    start_date: start.toISOString(),
+    end_date: end.toISOString(),
+  };
+}
+
 export default function StaffDeliveriesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -59,6 +99,16 @@ export default function StaffDeliveriesPage() {
   const [pageSize, setPageSize] = useState(25);
   const [totalCount, setTotalCount] = useState(0);
 
+  // Filter state
+  const [businessFilter, setBusinessFilter] = useState<string>("");
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>("all");
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
+
+  // Businesses list for filter dropdown
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [loadingBusinesses, setLoadingBusinesses] = useState(false);
+
   // Fee edit modal state
   const [showFeeModal, setShowFeeModal] = useState(false);
   const [editingDeliveryId, setEditingDeliveryId] = useState<string | null>(
@@ -66,6 +116,28 @@ export default function StaffDeliveriesPage() {
   );
   const [editingFee, setEditingFee] = useState<number>(0);
   const [savingFee, setSavingFee] = useState(false);
+
+  // Load businesses for the filter dropdown
+  useEffect(() => {
+    async function loadBusinesses() {
+      setLoadingBusinesses(true);
+      try {
+        const response = await fetch("/api/admin/businesses?limit=1000");
+        if (response.ok) {
+          const data = await response.json();
+          const list = Array.isArray(data) ? data : data.businesses || [];
+          setBusinesses(
+            list.map((b: any) => ({ id: b.id, name: b.name })).sort((a: Business, b: Business) => a.name.localeCompare(b.name))
+          );
+        }
+      } catch (err) {
+        console.error("Error loading businesses:", err);
+      } finally {
+        setLoadingBusinesses(false);
+      }
+    }
+    loadBusinesses();
+  }, []);
 
   useEffect(() => {
     async function checkRole() {
@@ -82,20 +154,45 @@ export default function StaffDeliveriesPage() {
     checkRole();
   }, [router, searchParams]);
 
-  // Load deliveries when page or pageSize changes
+  // Load deliveries when filters change
   useEffect(() => {
     if (role) {
       loadDeliveries();
     }
-  }, [page, pageSize, role]);
+  }, [page, pageSize, role, businessFilter, timePeriod, customStartDate, customEndDate]);
 
   async function loadDeliveries() {
     setLoading(true);
     try {
       const offset = (page - 1) * pageSize;
-      const response = await fetch(
-        `/api/staff/deliveries?limit=${pageSize}&offset=${offset}&include_totals=true`,
-      );
+      const params = new URLSearchParams({
+        limit: pageSize.toString(),
+        offset: offset.toString(),
+        include_totals: "true",
+      });
+
+      if (businessFilter) {
+        params.set("business_id", businessFilter);
+      }
+
+      if (timePeriod === "custom") {
+        if (customStartDate) {
+          params.set("start_date", new Date(customStartDate).toISOString());
+        }
+        if (customEndDate) {
+          const endDate = new Date(customEndDate);
+          endDate.setHours(23, 59, 59, 999);
+          params.set("end_date", endDate.toISOString());
+        }
+      } else {
+        const range = getDateRange(timePeriod);
+        if (range) {
+          params.set("start_date", range.start_date);
+          params.set("end_date", range.end_date);
+        }
+      }
+
+      const response = await fetch(`/api/staff/deliveries?${params.toString()}`);
       if (response.ok) {
         const data = await response.json();
         setDeliveries(data.deliveries);
@@ -468,6 +565,108 @@ export default function StaffDeliveriesPage() {
             Create Delivery
           </button>
         )}
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+        <div className="flex flex-wrap items-end gap-4">
+          {/* Client Filter */}
+          <div className="flex-1 min-w-[180px] max-w-xs">
+            <label className="flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">
+              <Building2 className="w-3.5 h-3.5" />
+              Client
+            </label>
+            <select
+              value={businessFilter}
+              onChange={(e) => {
+                setBusinessFilter(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
+            >
+              <option value="">All Clients</option>
+              {businesses.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Time Period Filter */}
+          <div className="flex-1 min-w-[180px] max-w-xs">
+            <label className="flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">
+              <CalendarDays className="w-3.5 h-3.5" />
+              Time Period
+            </label>
+            <select
+              value={timePeriod}
+              onChange={(e) => {
+                setTimePeriod(e.target.value as TimePeriod);
+                setPage(1);
+              }}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
+            >
+              <option value="all">All Time</option>
+              <option value="today">Today</option>
+              <option value="this_week">This Week</option>
+              <option value="this_month">This Month</option>
+              <option value="this_year">This Year</option>
+              <option value="custom">Custom Range</option>
+            </select>
+          </div>
+
+          {/* Custom Date Pickers */}
+          {timePeriod === "custom" && (
+            <>
+              <div className="min-w-[150px]">
+                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">
+                  From
+                </label>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => {
+                    setCustomStartDate(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+              <div className="min-w-[150px]">
+                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">
+                  To
+                </label>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => {
+                    setCustomEndDate(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+            </>
+          )}
+
+          {/* Clear Filters */}
+          {(businessFilter || timePeriod !== "all") && (
+            <button
+              onClick={() => {
+                setBusinessFilter("");
+                setTimePeriod("all");
+                setCustomStartDate("");
+                setCustomEndDate("");
+                setPage(1);
+              }}
+              className="flex items-center gap-1 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+            >
+              <X className="w-4 h-4" />
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
       {showCreateForm && (

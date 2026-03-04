@@ -89,20 +89,16 @@ export async function POST(request: NextRequest) {
 
     const publicUrl = urlData.publicUrl;
 
-    // Update company profile with logo URL
-    const { data: profileData, error: profileError } = await supabaseAdmin
+    // Try to update existing profile first
+    const { data: updatedProfile, error: updateError } = await supabaseAdmin
       .from('company_profile')
-      .upsert({
-        id: COMPANY_PROFILE_ID,
-        logo_url: publicUrl,
-      }, {
-        onConflict: 'id'
-      })
+      .update({ logo_url: publicUrl })
+      .eq('id', COMPANY_PROFILE_ID)
       .select()
       .single();
 
-    if (profileError) {
-      // If profile doesn't exist, create it
+    if (updateError) {
+      // Profile doesn't exist yet, create it
       const { data: newProfile, error: createError } = await supabaseAdmin
         .from('company_profile')
         .insert({
@@ -128,7 +124,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       url: publicUrl,
-      profile: profileData,
+      profile: updatedProfile,
     });
   } catch (error) {
     console.error('Logo upload error:', error);

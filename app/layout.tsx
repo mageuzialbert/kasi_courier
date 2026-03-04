@@ -29,14 +29,14 @@ export const viewport: Viewport = {
 export async function generateMetadata(): Promise<Metadata> {
   const profile = await getCompanyProfile();
   
-  const title = "Kasi Courier | #1 B2B Logistics & Delivery Service in Tanzania";
+  const title = "Kasi Courier Services";
   const description = "Fast, reliable same-day delivery and courier services in Dar es Salaam. Track packages in real-time. Automated B2B logistics for 500+ Tanzanian businesses.";
   const url = "https://kasicourier.com";
   
   return {
     title: {
       default: title,
-      template: `%s | Kasi Courier`
+      template: `%s | Kasi Courier Services`
     },
     description: description,
     keywords: ["courier services tanzania", "logistics dar es salaam", "same day delivery", "b2b courier", "package tracking", "last mile delivery"],
@@ -70,7 +70,7 @@ export async function generateMetadata(): Promise<Metadata> {
     appleWebApp: {
       capable: true,
       statusBarStyle: 'default',
-      title: profile?.company_name || "Kasi Courier",
+      title: profile?.company_name || "Kasi Courier Services",
     },
     formatDetection: {
       telephone: true,

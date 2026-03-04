@@ -29,6 +29,7 @@ import { getCurrentUser, logout } from "@/lib/auth";
 import { getUserRole } from "@/lib/roles";
 import { PermissionsProvider, usePermissions } from "@/lib/permissions-context";
 import VerificationBanner from "./business/components/VerificationBanner";
+import { supabase } from "@/lib/supabase";
 
 // Navigation item interface with permission requirements
 interface NavItem {
@@ -48,6 +49,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set());
+  const [companyProfile, setCompanyProfile] = useState<any>(null);
 
   const {
     hasModuleAccess,
@@ -71,6 +73,14 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
       setUser(currentUser);
       setRole(userRole);
+      
+      const { data: profile } = await supabase
+        .from('company_profile')
+        .select('logo_url, company_name')
+        .eq('id', '00000000-0000-0000-0000-000000000001')
+        .single();
+      if (profile) setCompanyProfile(profile);
+      
       setLoading(false);
     }
 
@@ -131,6 +141,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         { href: "/dashboard/staff/deliveries", label: "Deliveries", icon: Package },
         { href: "/dashboard/admin/operations/notifications", label: "Notifications", icon: Bell },
         { href: "/dashboard/staff/operations/custom-sms", label: "Custom SMS", icon: Send },
+        { href: "/dashboard/admin/riders", label: "Riders report", icon: BarChart3 },
       ],
     },
     {
@@ -141,7 +152,6 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         { href: "/dashboard/staff/financial", label: "Revenue", icon: BarChart3 },
         { href: "/dashboard/admin/expenses", label: "Expenses", icon: BarChart3 },
         { href: "/dashboard/admin/invoices", label: "Invoice", icon: FileText },
-        { href: "/dashboard/admin/riders", label: "Riders", icon: BarChart3 },
       ],
     },
     {
@@ -402,9 +412,10 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
                   )}
                 </button>
               )}
-              <Link href={getDashboardBase()} className="flex items-center">
-                <span className="text-2xl font-bold text-primary">
-                  Kasi Courier
+              <Link href={getDashboardBase()} className="flex items-center gap-2">
+                <img src={companyProfile?.logo_url || "/logo.png"} alt="Kasi Courier Logo" className="h-8 w-auto object-contain" />
+                <span className="text-2xl font-bold text-primary hidden md:inline-block">
+                  {companyProfile?.company_name || "Kasi Courier Services"}
                 </span>
               </Link>
             </div>

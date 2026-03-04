@@ -3,6 +3,7 @@ import CTABar from '@/components/landing/CTABar';
 import AboutSection from '@/components/landing/AboutSection';
 import BusinessPartners from '@/components/landing/BusinessPartners';
 import Link from 'next/link';
+import { Zap } from 'lucide-react';
 import { createClient } from '@/lib/supabase-server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 
@@ -146,8 +147,8 @@ export default async function Home() {
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'LogisticsService',
-    'name': 'Kasi Courier',
-    'image': 'https://kasicourier.com/icons/icon-maskable.svg',
+    'name': 'Kasi Courier Services',
+    'image': 'https://kasicourier.com/logo.png',
     '@id': 'https://kasicourier.com',
     'url': 'https://kasicourier.com',
     'telephone': companyProfile?.phone || '+255 700 000 000',
@@ -194,10 +195,19 @@ export default async function Home() {
       <nav className="bg-white shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <Link href="/" className="flex items-center">
-              <span className="text-2xl font-bold text-primary">Kasi Courier</span>
+            <Link href="/" className="flex items-center gap-2">
+              <img src={companyProfile?.logo_url || "/logo.png"} alt={companyProfile?.company_name || "Kasi Courier Services"} className="h-8 w-auto object-contain" />
+              <span className="text-2xl font-bold text-primary hidden sm:inline-block">{companyProfile?.company_name || "Kasi Courier Services"}</span>
             </Link>
             <div className="flex items-center gap-4">
+              <Link
+                href="/quick-order"
+                className="flex items-center gap-1 text-gray-700 hover:text-primary transition-colors"
+                title="Quick Order Placing"
+              >
+                <Zap className="w-5 h-5 md:hidden" />
+                <span className="hidden md:inline font-medium">Quick Order Placing</span>
+              </Link>
               <Link
                 href="/login"
                 className="text-gray-700 hover:text-primary transition-colors"
@@ -299,7 +309,7 @@ export default async function Home() {
                 </li>
                 <li>
                   <Link href="/quick-order" className="hover:text-white transition-colors">
-                    Order Delivery
+                    Quick Order Placing
                   </Link>
                 </li>
                 <li>
