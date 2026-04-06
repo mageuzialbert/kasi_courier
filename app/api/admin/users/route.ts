@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser, supabaseAdmin } from '@/lib/auth-server';
 import { saveUserPermissions } from '@/lib/permissions-server';
 import { getDefaultPermissions } from '@/lib/permissions';
+export const dynamic = 'force-dynamic';
 
 // GET - List all users with filters
 export async function GET(request: NextRequest) {

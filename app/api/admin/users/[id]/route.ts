@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser, supabaseAdmin } from '@/lib/auth-server';
 import { saveUserPermissions, getUserPermissionsServer } from '@/lib/permissions-server';
+export const dynamic = 'force-dynamic';
 
 // GET - Get single user with permissions
 export async function GET(

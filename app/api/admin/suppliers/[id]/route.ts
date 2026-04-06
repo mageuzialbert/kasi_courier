@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser, supabaseAdmin } from '@/lib/auth-server';
 import { requirePermission } from '@/lib/permissions-server';
+export const dynamic = 'force-dynamic';
 
 function buildPlaceholderEmail(name: string): string {
   const slug = name

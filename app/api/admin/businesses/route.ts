@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser, supabaseAdmin } from "@/lib/auth-server";
 import { requirePermission } from "@/lib/permissions-server";
 import { sendEventNotification } from "@/lib/notifications";
+export const dynamic = 'force-dynamic';
 
 const COMPANY_PROFILE_ID = "00000000-0000-0000-0000-000000000001";
 

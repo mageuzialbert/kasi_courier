@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser, supabaseAdmin } from '@/lib/auth-server';
+export const dynamic = 'force-dynamic';
 
 // GET - Rider KPI stats for a given date range
 // Query params: start (YYYY-MM-DD), end (YYYY-MM-DD)

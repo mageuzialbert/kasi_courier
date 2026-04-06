@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser, supabaseAdmin } from "@/lib/auth-server";
 import { sendSMS } from "@/lib/sms";
 import { sendEventNotification } from "@/lib/notifications";
+export const dynamic = 'force-dynamic';
 
 // PUT - Assign rider to delivery
 export async function PUT(

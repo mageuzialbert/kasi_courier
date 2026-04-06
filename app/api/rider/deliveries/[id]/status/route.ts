@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser, supabaseAdmin } from '@/lib/auth-server';
 import { requirePermission } from '@/lib/permissions-server';
 import { sendEventNotification } from '@/lib/notifications';
+export const dynamic = 'force-dynamic';
 
 // Valid status transitions for riders
 // Note: PENDING_CONFIRMATION can only be changed by staff/admin via the confirm endpoint

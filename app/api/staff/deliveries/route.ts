@@ -4,6 +4,7 @@ import { requirePermission } from "@/lib/permissions-server";
 import { sendSMS } from "@/lib/sms";
 import { sendEventNotification } from "@/lib/notifications";
 import { calculateDistanceKm } from "@/lib/distance";
+export const dynamic = 'force-dynamic';
 
 const COMPANY_PROFILE_ID = "00000000-0000-0000-0000-000000000001";
 

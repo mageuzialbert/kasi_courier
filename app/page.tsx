@@ -2,6 +2,7 @@ import HeroSlider from '@/components/landing/HeroSlider';
 import CTABar from '@/components/landing/CTABar';
 import AboutSection from '@/components/landing/AboutSection';
 import BusinessPartners from '@/components/landing/BusinessPartners';
+import MissionVisionSection from '@/components/landing/MissionVisionSection';
 import Link from 'next/link';
 import { Zap } from 'lucide-react';
 import { createClient } from '@/lib/supabase-server';
@@ -235,6 +236,9 @@ export default async function Home() {
          Trusted by 500+ Businesses in Tanzania • 99.8% On-Time Delivery Rate
       </div>
       <CTABar />
+
+      {/* Mission and Vision */}
+      <MissionVisionSection />
 
       {/* About Section */}
       <AboutSection content={aboutContent} />
