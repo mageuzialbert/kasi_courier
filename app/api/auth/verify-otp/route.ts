@@ -1,18 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
 // Server-side Supabase client with service role for admin operations
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  }
-);
-
 export async function POST(request: NextRequest) {
   try {
     const { phone, code } = await request.json();
@@ -45,7 +35,7 @@ export async function POST(request: NextRequest) {
     } else {
       console.log(`Found ${allOtps?.length || 0} OTP records for ${phoneNumber}`);
       if (allOtps && allOtps.length > 0) {
-        console.log('Recent OTPs:', allOtps.map(o => ({
+        console.log('Recent OTPs:', allOtps.map((o: any) => ({
           code: o.code,
           used: o.used,
           expires_at: o.expires_at,
@@ -126,7 +116,7 @@ export async function POST(request: NextRequest) {
 
     // Find auth user by email
     const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers();
-    const authUser = authUsers.users.find(u => u.email === userData.email);
+    const authUser = authUsers.users.find((u: any) => u.email === userData.email);
 
     if (!authUser) {
       return NextResponse.json(

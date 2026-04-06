@@ -19,6 +19,13 @@ interface Charge {
   created_at: string;
 }
 
+interface DeliveryCharge {
+  id: string;
+  delivery_fee: number;
+  created_at: string;
+  dropoff_name: string | null;
+}
+
 // Represents a billable item - either from charges table or from delivery with delivery_fee
 interface BillableItem {
   id: string;
@@ -123,11 +130,13 @@ export default function CreateInvoicePage() {
 
       // Get delivery IDs that already have charges
       const chargedDeliveryIds = new Set(
-        (charges || []).filter((c) => c.delivery_id).map((c) => c.delivery_id),
+        (charges || [])
+          .filter((c: Charge) => c.delivery_id)
+          .map((c: Charge) => c.delivery_id),
       );
 
       // Convert charges to billable items
-      const chargeItems: BillableItem[] = (charges || []).map((charge) => ({
+      const chargeItems: BillableItem[] = (charges || []).map((charge: Charge) => ({
         id: charge.id,
         delivery_id: charge.delivery_id,
         amount: charge.amount,
@@ -138,8 +147,8 @@ export default function CreateInvoicePage() {
 
       // Convert unbilled deliveries to billable items
       const unbilledDeliveryItems: BillableItem[] = (deliveries || [])
-        .filter((d) => !chargedDeliveryIds.has(d.id))
-        .map((delivery) => ({
+        .filter((d: DeliveryCharge) => !chargedDeliveryIds.has(d.id))
+        .map((delivery: DeliveryCharge) => ({
           id: `delivery-${delivery.id}`,
           delivery_id: delivery.id,
           amount: delivery.delivery_fee,

@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser, supabaseAdmin } from '@/lib/auth-server';
-import { sendSMS } from '@/lib/sms';
+import { sendSMS, type SMSResult } from '@/lib/sms';
 
 export const dynamic = 'force-dynamic';
+
+type CustomSmsResult = SMSResult & {
+  phone: string;
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,7 +31,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Message content is required' }, { status: 400 });
     }
 
-    const results = [];
+    const results: CustomSmsResult[] = [];
     let successCount = 0;
     let failureCount = 0;
 

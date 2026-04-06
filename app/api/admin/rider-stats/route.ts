@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
 
     // 3. Fetch charges for the deliveries (revenue)
     // Batch the .in() query to avoid URL length limits with large delivery sets
-    const deliveryIds = (deliveries || []).map((d) => d.id);
+    const deliveryIds = (deliveries || []).map((d: any) => d.id);
     let charges: { delivery_id: string; amount: number }[] = [];
 
     if (deliveryIds.length > 0) {
@@ -91,20 +91,20 @@ export async function GET(request: NextRequest) {
     }
 
     // 5. Build per-rider stats
-    const riderStats = riders.map((rider) => {
+    const riderStats = riders.map((rider: any) => {
       const riderDeliveries = (deliveries || []).filter(
-        (d) => d.assigned_rider_id === rider.id
+        (d: any) => d.assigned_rider_id === rider.id
       );
 
       const deliveryCount = riderDeliveries.length;
       const deliveredCount = riderDeliveries.filter(
-        (d) => d.status === 'DELIVERED'
+        (d: any) => d.status === 'DELIVERED'
       ).length;
       const failedCount = riderDeliveries.filter(
-        (d) => d.status === 'FAILED' || d.status === 'REJECTED'
+        (d: any) => d.status === 'FAILED' || d.status === 'REJECTED'
       ).length;
       const inProgressCount = riderDeliveries.filter(
-        (d) => !['DELIVERED', 'FAILED', 'REJECTED'].includes(d.status)
+        (d: any) => !['DELIVERED', 'FAILED', 'REJECTED'].includes(d.status)
       ).length;
 
       const successRate =
@@ -118,21 +118,21 @@ export async function GET(request: NextRequest) {
           : 0;
 
       // Revenue: sum of charges for this rider's deliveries
-      const riderDeliveryIds = new Set(riderDeliveries.map((d) => d.id));
+      const riderDeliveryIds = new Set(riderDeliveries.map((d: any) => d.id));
       const revenue = charges
-        .filter((c) => riderDeliveryIds.has(c.delivery_id))
-        .reduce((sum, c) => sum + parseFloat(c.amount.toString()), 0);
+        .filter((c: any) => riderDeliveryIds.has(c.delivery_id))
+        .reduce((sum: number, c: any) => sum + parseFloat(c.amount.toString()), 0);
 
       // Salary burn
       const salaryBurn = (salaryExpenses || [])
-        .filter((e) => e.rider_id === rider.id)
-        .reduce((sum, e) => sum + parseFloat(e.amount.toString()), 0);
+        .filter((e: any) => e.rider_id === rider.id)
+        .reduce((sum: number, e: any) => sum + parseFloat(e.amount.toString()), 0);
 
       const net = revenue - salaryBurn;
 
       // Active days: distinct calendar days with at least one delivery
       const activeDaysSet = new Set(
-        riderDeliveries.map((d) =>
+        riderDeliveries.map((d: any) =>
           new Date(d.created_at).toISOString().split('T')[0]
         )
       );
@@ -163,11 +163,11 @@ export async function GET(request: NextRequest) {
 
     // 6. Summary totals
     const summary = {
-      totalDeliveries: riderStats.reduce((s, r) => s + r.deliveryCount, 0),
-      totalDelivered: riderStats.reduce((s, r) => s + r.deliveredCount, 0),
-      totalRevenue: riderStats.reduce((s, r) => s + r.revenue, 0),
-      totalSalaryBurn: riderStats.reduce((s, r) => s + r.salaryBurn, 0),
-      totalNet: riderStats.reduce((s, r) => s + r.net, 0),
+      totalDeliveries: riderStats.reduce((s: number, r: any) => s + r.deliveryCount, 0),
+      totalDelivered: riderStats.reduce((s: number, r: any) => s + r.deliveredCount, 0),
+      totalRevenue: riderStats.reduce((s: number, r: any) => s + r.revenue, 0),
+      totalSalaryBurn: riderStats.reduce((s: number, r: any) => s + r.salaryBurn, 0),
+      totalNet: riderStats.reduce((s: number, r: any) => s + r.net, 0),
     };
 
     return NextResponse.json({ summary, riders: riderStats });

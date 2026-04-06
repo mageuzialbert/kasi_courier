@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       .from('charges')
       .select('amount');
 
-    const totalRevenue = allCharges?.reduce((sum, c) => sum + parseFloat(c.amount.toString()), 0) || 0;
+    const totalRevenue = allCharges?.reduce((sum: number, c: any) => sum + parseFloat(c.amount.toString()), 0) || 0;
 
     // Get this week's revenue
     const { data: weekCharges } = await supabaseAdmin
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
       .select('amount')
       .gte('created_at', weekStart.toISOString());
 
-    const weekRevenue = weekCharges?.reduce((sum, c) => sum + parseFloat(c.amount.toString()), 0) || 0;
+    const weekRevenue = weekCharges?.reduce((sum: number, c: any) => sum + parseFloat(c.amount.toString()), 0) || 0;
 
     // Get this month's revenue
     const { data: monthCharges } = await supabaseAdmin
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
       .select('amount')
       .gte('created_at', monthStart.toISOString());
 
-    const monthRevenue = monthCharges?.reduce((sum, c) => sum + parseFloat(c.amount.toString()), 0) || 0;
+    const monthRevenue = monthCharges?.reduce((sum: number, c: any) => sum + parseFloat(c.amount.toString()), 0) || 0;
 
     // Get invoices overview
     const { data: invoices } = await supabaseAdmin
@@ -60,11 +60,11 @@ export async function GET(request: NextRequest) {
 
     const invoicesOverview = {
       total: invoices?.length || 0,
-      pending: invoices?.filter((i) => i.status === 'SENT').length || 0,
-      paid: invoices?.filter((i) => i.status === 'PAID').length || 0,
-      draft: invoices?.filter((i) => i.status === 'DRAFT').length || 0,
-      totalAmount: invoices?.reduce((sum, i) => sum + parseFloat(i.total_amount.toString()), 0) || 0,
-      pendingAmount: invoices?.filter((i) => i.status === 'SENT').reduce((sum, i) => sum + parseFloat(i.total_amount.toString()), 0) || 0,
+      pending: invoices?.filter((i: any) => i.status === 'SENT').length || 0,
+      paid: invoices?.filter((i: any) => i.status === 'PAID').length || 0,
+      draft: invoices?.filter((i: any) => i.status === 'DRAFT').length || 0,
+      totalAmount: invoices?.reduce((sum: number, i: any) => sum + parseFloat(i.total_amount.toString()), 0) || 0,
+      pendingAmount: invoices?.filter((i: any) => i.status === 'SENT').reduce((sum: number, i: any) => sum + parseFloat(i.total_amount.toString()), 0) || 0,
     };
 
     // Get charges breakdown (last 30 days)
@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
       `);
 
     const businessRevenue: Record<string, { businessId: string; businessName: string; revenue: number }> = {};
-    businessCharges?.forEach((charge) => {
+    businessCharges?.forEach((charge: any) => {
       const businessId = charge.business_id;
       const business = charge.businesses as any;
       if (!businessRevenue[businessId]) {
@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
       .gte('created_at', sevenDaysAgo.toISOString());
 
     const dailyRevenue: Record<string, number> = {};
-    trendCharges?.forEach((charge) => {
+    trendCharges?.forEach((charge: any) => {
       const date = new Date(charge.created_at).toISOString().split('T')[0];
       dailyRevenue[date] = (dailyRevenue[date] || 0) + parseFloat(charge.amount.toString());
     });
@@ -147,7 +147,7 @@ export async function GET(request: NextRequest) {
     const { data: allExpenses } = await expenseQuery;
 
     // Calculate total expenses
-    const totalExpenses = allExpenses?.reduce((sum, e) => sum + parseFloat(e.amount.toString()), 0) || 0;
+    const totalExpenses = allExpenses?.reduce((sum: number, e: any) => sum + parseFloat(e.amount.toString()), 0) || 0;
 
     // Calculate expenses for date range (if provided)
     let filteredRevenue = totalRevenue;
@@ -158,7 +158,7 @@ export async function GET(request: NextRequest) {
         .gte('created_at', dateFilterStart.toISOString())
         .lte('created_at', dateFilterEnd.toISOString());
       
-      filteredRevenue = filteredCharges?.reduce((sum, c) => sum + parseFloat(c.amount.toString()), 0) || 0;
+      filteredRevenue = filteredCharges?.reduce((sum: number, c: any) => sum + parseFloat(c.amount.toString()), 0) || 0;
     }
 
     // Calculate profit
@@ -166,7 +166,7 @@ export async function GET(request: NextRequest) {
 
     // Expense breakdown by category
     const expenseByCategory: Record<string, { categoryName: string; amount: number }> = {};
-    allExpenses?.forEach((expense) => {
+    allExpenses?.forEach((expense: any) => {
       const category = expense.expense_categories as any;
       const categoryId = expense.category_id;
       const categoryName = category?.name || 'Unknown';
@@ -191,7 +191,7 @@ export async function GET(request: NextRequest) {
       .gte('expense_date', thirtyDaysAgoForExpenses.toISOString().split('T')[0]);
 
     const dailyExpenses: Record<string, number> = {};
-    recentExpenses?.forEach((expense) => {
+    recentExpenses?.forEach((expense: any) => {
       const date = expense.expense_date;
       dailyExpenses[date] = (dailyExpenses[date] || 0) + parseFloat(expense.amount.toString());
     });

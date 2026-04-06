@@ -256,7 +256,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse delivery fee
-    let finalDeliveryFee = null;
+    let finalDeliveryFee: number | null = null;
     if (
       delivery_fee !== undefined &&
       delivery_fee !== null &&
@@ -269,8 +269,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse latitude and longitude
-    let finalLatitude = null;
-    let finalLongitude = null;
+    let finalLatitude: number | null = null;
+    let finalLongitude: number | null = null;
     if (latitude !== undefined && latitude !== null) {
       const lat = parseFloat(latitude);
       if (!isNaN(lat) && lat >= -90 && lat <= 90) {

@@ -1,16 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  }
-);
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
 export async function POST(request: NextRequest) {
   try {
@@ -52,7 +42,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get business ID if user is a business
-    let businessId = null;
+    let businessId: string | null = null;
     if (userData.role === 'BUSINESS') {
       const { data: businessData } = await supabaseAdmin
         .from('businesses')

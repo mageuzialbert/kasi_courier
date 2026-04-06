@@ -61,7 +61,7 @@ export async function GET(
       );
     }
 
-    const totalExpense = (expenses || []).reduce((sum, exp) => {
+    const totalExpense = (expenses || []).reduce((sum: number, exp: any) => {
       return sum + parseFloat((exp.amount ?? 0).toString());
     }, 0);
 

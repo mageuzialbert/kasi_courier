@@ -1,19 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getAuthenticatedUser } from "@/lib/auth-server";
 import { requirePermission } from "@/lib/permissions-server";
 export const dynamic = 'force-dynamic';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  },
-);
+type ChargeRecord = {
+  id?: string;
+  delivery_id: string | null;
+  amount: number | string;
+  description: string | null;
+};
+
+type DeliveryFeeRecord = {
+  id: string;
+  delivery_fee: number;
+  dropoff_name: string | null;
+};
 
 // Generate invoice number
 function generateInvoiceNumber(invoiceType: string = "INVOICE"): string {
@@ -125,13 +128,13 @@ export async function POST(request: NextRequest) {
     // Get delivery IDs that already have charges
     const chargedDeliveryIds = new Set(
       (existingCharges || [])
-        .filter((c) => c.delivery_id)
-        .map((c) => c.delivery_id),
+        .filter((c: ChargeRecord) => c.delivery_id)
+        .map((c: ChargeRecord) => c.delivery_id),
     );
 
     // Find unbilled deliveries (have delivery_fee but no charge record)
     const unbilledDeliveries = (deliveries || []).filter(
-      (d) => !chargedDeliveryIds.has(d.id),
+      (d: DeliveryFeeRecord) => !chargedDeliveryIds.has(d.id),
     );
 
     // Create charges for unbilled deliveries
@@ -142,7 +145,7 @@ export async function POST(request: NextRequest) {
       description: string;
     }[] = [];
     if (unbilledDeliveries.length > 0) {
-      const chargeRecords = unbilledDeliveries.map((delivery) => ({
+      const chargeRecords = unbilledDeliveries.map((delivery: DeliveryFeeRecord) => ({
         delivery_id: delivery.id,
         business_id: business_id,
         amount: delivery.delivery_fee,
@@ -167,7 +170,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Combine existing charges with newly created charges
-    const allCharges = [...(existingCharges || []), ...newCharges];
+    const allCharges: ChargeRecord[] = [...(existingCharges || []), ...newCharges];
 
     if (allCharges.length === 0) {
       return NextResponse.json(
@@ -177,7 +180,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate total
-    const totalAmount = allCharges.reduce((sum, charge) => {
+    const totalAmount = allCharges.reduce((sum: number, charge: ChargeRecord) => {
       return sum + parseFloat(charge.amount.toString());
     }, 0);
 
@@ -229,7 +232,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create invoice items from all charges (existing + newly created)
-    const invoiceItems = allCharges.map((charge) => ({
+    const invoiceItems = allCharges.map((charge: ChargeRecord) => ({
       invoice_id: invoice.id,
       delivery_id: charge.delivery_id,
       amount: charge.amount,

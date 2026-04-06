@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
       .not('status', 'is', null);
 
     const statusCounts: Record<string, number> = {};
-    deliveriesByStatus?.forEach((d) => {
+    deliveriesByStatus?.forEach((d: any) => {
       statusCounts[d.status] = (statusCounts[d.status] || 0) + 1;
     });
 
@@ -63,14 +63,14 @@ export async function GET(request: NextRequest) {
     let avgDeliveryTime = 0;
     if (deliveredDeliveries && deliveredDeliveries.length > 0) {
       const times = deliveredDeliveries
-        .map((d) => {
+        .map((d: any) => {
           if (!d.delivered_at || !d.created_at) return null;
           return new Date(d.delivered_at).getTime() - new Date(d.created_at).getTime();
         })
-        .filter((t) => t !== null) as number[];
+        .filter((t: number | null) => t !== null) as number[];
 
       if (times.length > 0) {
-        avgDeliveryTime = times.reduce((a, b) => a + b, 0) / times.length;
+        avgDeliveryTime = times.reduce((a: number, b: number) => a + b, 0) / times.length;
         // Convert to hours
         avgDeliveryTime = avgDeliveryTime / (1000 * 60 * 60);
       }
